@@ -12,7 +12,7 @@ from uuid import uuid4
 from fastapi.testclient import TestClient
 
 from analytics.canonicalization.canonicalization import canonicalize_records
-from analytics.data_quality.quality_score import evaluate_dataset_quality
+from analytics.data_quality.quality_processor import evaluate_dataset_quality
 from analytics.synthetic_generator import generate_synthetic_soc_benchmark, run_full_analytical_pipeline
 from backend.main import app
 from backend.models.canonical import FindingType
@@ -65,7 +65,7 @@ def test_missing_data_degrades_dq_components_dynamically():
         )
     raw_bundle["alerts"] = corrupted_alerts
 
-    canonical_ds, _, _, findings, dq_res = run_full_analytical_pipeline(
+    canonical_ds, _, _, findings, dq_res, _run_id = run_full_analytical_pipeline(
         raw_bundle=raw_bundle,
         dataset_version_id=version_id,
     )
@@ -114,7 +114,7 @@ def test_low_dq_suppresses_negative_space_findings():
     # Intentionally prune alerts to 2 to trigger low sample sufficiency and low coverage
     raw_bundle["alerts"] = raw_bundle["alerts"][:2]
 
-    canonical_ds, _, _, findings, dq_res = run_full_analytical_pipeline(
+    canonical_ds, _, _, findings, dq_res, _run_id = run_full_analytical_pipeline(
         raw_bundle=raw_bundle,
         dataset_version_id=version_id,
     )

@@ -14,7 +14,7 @@ def test_export_supervisory_report_json_and_html():
     version_id = uuid4()
 
     raw_bundle, _ = generate_synthetic_soc_benchmark(seed=42, dataset_version_id=version_id)
-    canonical_ds, reconstructed_ds, bm_engine, findings, dq_res = run_full_analytical_pipeline(
+    canonical_ds, reconstructed_ds, bm_engine, findings, dq_res, _run_id = run_full_analytical_pipeline(
         raw_bundle=raw_bundle,
         dataset_version_id=version_id,
     )

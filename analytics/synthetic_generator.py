@@ -13,6 +13,7 @@ from uuid import UUID, uuid4
 
 from analytics.canonicalization.canonicalization import CanonicalDataset, canonicalize_records
 from analytics.data_quality.quality_processor import evaluate_dataset_quality
+from analytics.data_quality.quality_score import DataQualityResult
 from analytics.execution_gap.escalation_gap import EscalationGapDetector
 from analytics.execution_gap.fast_closure import FastClosureDetector
 from analytics.execution_gap.investigation_sufficiency import InvestigationSufficiencyDetector
@@ -366,12 +367,16 @@ def run_full_analytical_pipeline(
     raw_bundle: dict[str, list[dict[str, Any]]],
     dataset_version_id: UUID | None = None,
     ruleset_version: str = "V1",
-) -> tuple[CanonicalDataset, ReconstructedDataset, PeerBenchmarkEngine, list[Finding], DataQualityResult]:
+) -> tuple[CanonicalDataset, ReconstructedDataset, PeerBenchmarkEngine, list[Finding], DataQualityResult, UUID]:
     """
     Executes the complete end-to-end analytical pipeline:
     Canonicalization -> Workflow Reconstruction -> Peer Benchmarking -> Data Trust ->
     Detectors (Fast Closure, Escalation Gap, Repeated Unresolved, Coverage Gap) -> Evidence Fusion.
+
+    Returns a 6-tuple: (canonical_ds, reconstructed_ds, benchmark_engine, findings, dq_result, analysis_run_id)
+    The analysis_run_id is the UUID that links every finding back to this specific pipeline execution.
     """
+    from datetime import datetime, timezone as tz
     ver_id = dataset_version_id or uuid4()
     analysis_run_id = uuid4()
 
@@ -423,7 +428,7 @@ def run_full_analytical_pipeline(
         )
         all_findings.extend(cse_findings)
 
-    return canonical_ds, reconstructed_ds, benchmark_engine, all_findings, dq_result
+    return canonical_ds, reconstructed_ds, benchmark_engine, all_findings, dq_result, analysis_run_id
 
 
 def evaluate_ground_truth_validation(
@@ -437,7 +442,7 @@ def evaluate_ground_truth_validation(
         seed=101 if is_held_out else 42,
         is_held_out=is_held_out,
     )
-    canonical_ds, reconstructed_ds, bm_engine, findings, _ = run_full_analytical_pipeline(raw_bundle)
+    canonical_ds, reconstructed_ds, bm_engine, findings, _, _run_id = run_full_analytical_pipeline(raw_bundle)
 
     # Build ground truth weakness map
     gt_map: dict[UUID, set[str]] = {}

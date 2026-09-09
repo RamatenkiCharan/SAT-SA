@@ -34,7 +34,7 @@ async def lifespan(app: FastAPI):
         dataset_id = uuid4()
         version_id = uuid4()
         raw_bundle, _ = generate_synthetic_soc_benchmark(seed=42, dataset_version_id=version_id)
-        canonical_ds, reconstructed_ds, bm_engine, findings, dq_res = run_full_analytical_pipeline(
+        canonical_ds, reconstructed_ds, bm_engine, findings, dq_res, analysis_run_id = run_full_analytical_pipeline(
             raw_bundle=raw_bundle,
             dataset_version_id=version_id,
         )
@@ -48,8 +48,11 @@ async def lifespan(app: FastAPI):
             findings=findings,
             dq_score=round(dq_res.score, 4),
             description="Pre-seeded multi-sector CSE operational evidence bundle featuring National Power Dispatch Center (NPDC) Goodhart's Law case study.",
+            analysis_run_id=analysis_run_id,
+            ruleset_version="V1",
         )
     yield
+
 
 
 app = FastAPI(

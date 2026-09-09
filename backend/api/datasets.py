@@ -14,7 +14,7 @@ from pydantic import BaseModel
 
 from analytics.synthetic_generator import generate_synthetic_soc_benchmark, run_full_analytical_pipeline
 from backend.repositories.in_memory_repo import SATRepository, get_repository
-from backend.security.auth import UserContext, get_current_user
+from backend.security.auth import UserContext, get_current_user, require_analyst_or_above, require_supervisor
 
 router = APIRouter(prefix="/api/datasets", tags=["datasets"])
 
@@ -29,7 +29,11 @@ class SwitchVersionRequest(BaseModel):
 
 
 @router.get("")
-def list_datasets(repo: SATRepository = Depends(get_repository)):
+def list_datasets(
+    repo: SATRepository = Depends(get_repository),
+    user: UserContext = Depends(get_current_user),
+):
+    """List all loaded dataset versions. Requires authentication."""
     return {
         "active_version_id": str(repo.active_dataset_version_id) if repo.active_dataset_version_id else None,
         "datasets": repo.list_datasets(),
@@ -40,8 +44,9 @@ def list_datasets(repo: SATRepository = Depends(get_repository)):
 def load_demo_dataset(
     req: LoadDemoRequest,
     repo: SATRepository = Depends(get_repository),
-    user: UserContext = Depends(get_current_user),
+    user: UserContext = Depends(require_analyst_or_above),
 ):
+    """Load a synthetic benchmark dataset. Requires analyst or higher role."""
     is_held_out = req.scenario_type == "held_out_test"
     dataset_id = uuid4()
     version_id = uuid4()
@@ -55,7 +60,7 @@ def load_demo_dataset(
         is_held_out=is_held_out,
     )
 
-    canonical_ds, reconstructed_ds, bm_engine, findings, dq_res = run_full_analytical_pipeline(
+    canonical_ds, reconstructed_ds, bm_engine, findings, dq_res, analysis_run_id = run_full_analytical_pipeline(
         raw_bundle=raw_bundle,
         dataset_version_id=version_id,
     )
@@ -70,6 +75,8 @@ def load_demo_dataset(
         findings=findings,
         dq_score=round(dq_res.score, 4),
         description="Comprehensive multi-CSE dataset containing healthy baseline entities, Goodhart's Law execution gaps, and negative-space coverage monitoring anomalies.",
+        analysis_run_id=analysis_run_id,
+        ruleset_version="V1",
     )
 
     return {
@@ -94,8 +101,9 @@ def load_demo_dataset(
 async def upload_dataset_file(
     file: UploadFile,
     repo: SATRepository = Depends(get_repository),
-    user: UserContext = Depends(get_current_user),
+    user: UserContext = Depends(require_analyst_or_above),
 ):
+    """Upload a CSV or JSON dataset file. Requires analyst or higher role."""
     from backend.services.ingestion import parse_raw_payload, IngestionValidationError
 
     contents = await file.read()
@@ -111,7 +119,7 @@ async def upload_dataset_file(
     dataset_id = uuid4()
     version_id = uuid4()
 
-    canonical_ds, reconstructed_ds, bm_engine, findings, dq_res = run_full_analytical_pipeline(
+    canonical_ds, reconstructed_ds, bm_engine, findings, dq_res, analysis_run_id = run_full_analytical_pipeline(
         raw_bundle=raw_bundle,
         dataset_version_id=version_id,
     )
@@ -126,6 +134,8 @@ async def upload_dataset_file(
         findings=findings,
         dq_score=round(dq_res.score, 4),
         description=f"User-submitted SOC operational evidence package ({filename})",
+        analysis_run_id=analysis_run_id,
+        ruleset_version="V1",
     )
 
     return {
@@ -149,7 +159,9 @@ async def upload_dataset_file(
 def switch_active_version(
     req: SwitchVersionRequest,
     repo: SATRepository = Depends(get_repository),
+    user: UserContext = Depends(require_supervisor),
 ):
+    """Switch the active dataset version. Requires supervisor or admin role."""
     if req.dataset_version_id not in repo.dataset_versions:
         raise HTTPException(status_code=404, detail="Dataset version not found.")
     repo.active_dataset_version_id = req.dataset_version_id

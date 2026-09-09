@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from analytics.explainability.templates import generate_finding_explanation
 from backend.repositories.in_memory_repo import SATRepository, get_repository
+from backend.security.auth import UserContext, get_current_user
 
 router = APIRouter(prefix="/api/findings", tags=["findings"])
 
@@ -23,6 +24,7 @@ def list_findings(
     min_priority: Optional[float] = Query(None),
     dataset_version_id: Optional[UUID] = Query(None),
     repo: SATRepository = Depends(get_repository),
+    user: UserContext = Depends(get_current_user),
 ):
     findings = repo.get_findings(
         dataset_version_id=dataset_version_id,
@@ -78,6 +80,7 @@ def list_findings(
 def get_finding_detail(
     finding_id: UUID,
     repo: SATRepository = Depends(get_repository),
+    user: UserContext = Depends(get_current_user),
 ):
     finding = repo.get_finding_by_id(finding_id)
     if not finding:
@@ -108,6 +111,7 @@ def get_finding_detail(
 def get_finding_evidence(
     finding_id: UUID,
     repo: SATRepository = Depends(get_repository),
+    user: UserContext = Depends(get_current_user),
 ):
     records = repo.get_finding_evidence_records(finding_id)
     if not records:

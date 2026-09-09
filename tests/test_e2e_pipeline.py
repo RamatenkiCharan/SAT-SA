@@ -18,7 +18,7 @@ def test_full_pipeline_end_to_end():
     raw_bundle, scenarios = generate_synthetic_soc_benchmark(seed=42, dataset_version_id=ver_id)
 
     # 2. Run analytical pipeline
-    canonical_ds, reconstructed_ds, bm_engine, findings, dq_res = run_full_analytical_pipeline(
+    canonical_ds, reconstructed_ds, bm_engine, findings, dq_res, _run_id = run_full_analytical_pipeline(
         raw_bundle=raw_bundle,
         dataset_version_id=ver_id,
     )

@@ -13,7 +13,7 @@ import time
 from dataclasses import dataclass
 from typing import Optional
 
-from fastapi import Depends, Header, HTTPException, Security, status
+from fastapi import Depends, HTTPException, Security, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 
@@ -135,12 +135,11 @@ def verify_access_token(token: str) -> Optional[UserContext]:
 
 def get_current_user(
     auth_header: Optional[HTTPAuthorizationCredentials] = Security(security_bearer),
-    x_user_role: Optional[str] = Header(None, alias="X-User-Role"),
-    x_user_id: Optional[str] = Header(None, alias="X-User-Id"),
 ) -> UserContext:
     """
-    Resolves local security context from Bearer token.
-    Falls back to default supervisor for unauthenticated local browser sessions.
+    Resolves authenticated user from Bearer token.
+    Returns HTTP 401 if no valid token is provided.
+    No anonymous fallback — every protected endpoint requires a valid token.
     """
     if auth_header and auth_header.credentials:
         user = verify_access_token(auth_header.credentials)
@@ -150,14 +149,22 @@ def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired access token.",
         )
-
-    # Fallback to local default supervisor if running in local standalone mode
-    return UserContext(
-        user_id="usr_sup_001",
-        username="supervisor",
-        display_name="Senior NCIIPC Supervisory Examiner",
-        role="supervisor",
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Authentication required. POST to /api/auth/login to obtain a Bearer token.",
     )
+
+
+def get_optional_user(
+    auth_header: Optional[HTTPAuthorizationCredentials] = Security(security_bearer),
+) -> Optional[UserContext]:
+    """
+    Returns the authenticated user if a valid token is present, or None if unauthenticated.
+    Use only for endpoints that are explicitly public (e.g. /api/health).
+    """
+    if auth_header and auth_header.credentials:
+        return verify_access_token(auth_header.credentials)
+    return None
 
 
 def require_supervisor(user: UserContext = Depends(get_current_user)) -> UserContext:
@@ -174,5 +181,15 @@ def require_admin(user: UserContext = Depends(get_current_user)) -> UserContext:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Forbidden: Administrative privileges required.",
+        )
+    return user
+
+
+def require_analyst_or_above(user: UserContext = Depends(get_current_user)) -> UserContext:
+    """Allows analyst, supervisor, or admin — blocks unauthenticated."""
+    if user.role not in ("analyst", "supervisor", "admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Forbidden: Analyst or higher privileges required.",
         )
     return user

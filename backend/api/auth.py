@@ -13,6 +13,7 @@ from backend.security.auth import (
     create_access_token,
     get_current_user,
     require_admin,
+    require_analyst_or_above,
     _LOCAL_USERS_DB,
 )
 
@@ -39,7 +40,7 @@ def login(req: LoginRequest):
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid username or password. Available test accounts: supervisor / Supervisor@123, analyst / Analyst@123, admin / Admin@123.",
+            detail="Invalid username or password. Seeded accounts: supervisor/sih2026@supervisor, analyst/sih2026@analyst, admin/sih2026@admin.",
         )
     token = create_access_token(user)
     return LoginResponse(

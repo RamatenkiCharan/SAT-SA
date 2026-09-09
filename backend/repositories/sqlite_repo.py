@@ -143,6 +143,19 @@ class SQLiteDatabase:
                     fusion_weights_json TEXT NOT NULL,
                     detector_thresholds_json TEXT NOT NULL
                 );
+
+                CREATE TABLE IF NOT EXISTS analysis_runs (
+                    analysis_run_id TEXT PRIMARY KEY,
+                    dataset_version_id TEXT NOT NULL,
+                    ruleset_version TEXT NOT NULL,
+                    started_at TEXT NOT NULL,
+                    completed_at TEXT,
+                    status TEXT NOT NULL,
+                    findings_count INTEGER,
+                    data_quality_score REAL,
+                    error_info TEXT,
+                    FOREIGN KEY (dataset_version_id) REFERENCES dataset_versions(dataset_version_id)
+                );
                 """
             )
 
@@ -311,6 +324,41 @@ class SQLiteDatabase:
                     target_id,
                     occurred_at.isoformat(),
                     json.dumps(details),
+                ),
+            )
+
+    def save_analysis_run(
+        self,
+        analysis_run_id: UUID,
+        dataset_version_id: UUID,
+        ruleset_version: str,
+        started_at: datetime,
+        completed_at: Optional[datetime],
+        status: str,
+        findings_count: int,
+        data_quality_score: Optional[float],
+        error_info: Optional[str] = None,
+    ) -> None:
+        with self._connection() as conn:
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO analysis_runs (
+                    analysis_run_id, dataset_version_id, ruleset_version,
+                    started_at, completed_at, status, findings_count,
+                    data_quality_score, error_info
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    str(analysis_run_id),
+                    str(dataset_version_id),
+                    ruleset_version,
+                    started_at.isoformat(),
+                    completed_at.isoformat() if completed_at else None,
+                    status,
+                    findings_count,
+                    data_quality_score,
+                    error_info,
                 ),
             )
 

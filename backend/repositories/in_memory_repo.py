@@ -223,6 +223,8 @@ class SATRepository:
         findings: list[Finding],
         dq_score: float,
         description: str = "",
+        analysis_run_id: Optional[UUID] = None,
+        ruleset_version: str = "V1",
     ) -> DatasetVersionMetadata:
         ver_id = canonical_dataset.dataset_version_id
 
@@ -287,6 +289,22 @@ class SATRepository:
             except Exception:
                 pass
 
+            # Persist analysis run record for full provenance traceability
+            if analysis_run_id:
+                try:
+                    self.db.save_analysis_run(
+                        analysis_run_id=analysis_run_id,
+                        dataset_version_id=ver_id,
+                        ruleset_version=ruleset_version,
+                        started_at=ver_meta.import_time,
+                        completed_at=datetime.now(timezone.utc),
+                        status="COMPLETED",
+                        findings_count=len(findings),
+                        data_quality_score=dq_score,
+                    )
+                except Exception:
+                    pass
+
         self.record_audit_event(
             user_id="system",
             username="System Administrator",
@@ -298,10 +316,13 @@ class SATRepository:
                 "version_number": ver_meta.version_number,
                 "row_count": ver_meta.row_count,
                 "findings_generated": len(findings),
+                "analysis_run_id": str(analysis_run_id) if analysis_run_id else None,
+                "ruleset_version": ruleset_version,
             },
         )
 
         return ver_meta
+
 
     def list_datasets(self) -> list[dict[str, Any]]:
         result = []

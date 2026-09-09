@@ -27,7 +27,7 @@ from uuid import uuid4
 import pytest
 
 from analytics.canonicalization.canonicalization import CanonicalDataset, canonicalize_records
-from analytics.data_quality.quality_score import evaluate_dataset_quality
+from analytics.data_quality.quality_processor import evaluate_dataset_quality
 from analytics.fusion.evidence_fusion import EvidenceFusionEngine
 from analytics.execution_gap.escalation_gap import EscalationGapDetector
 from analytics.execution_gap.fast_closure import FastClosureDetector
@@ -216,7 +216,7 @@ def test_fr_050_to_073_fusion_and_priority_gates():
     """FR-060..073: Computes 5-component priority score and validates high-priority gating contract."""
     ver_id = uuid4()
     raw_bundle, _ = generate_synthetic_soc_benchmark(seed=42, dataset_version_id=ver_id)
-    canonical_ds, reconstructed_ds, bm_engine, findings, dq_res = run_full_analytical_pipeline(
+    canonical_ds, reconstructed_ds, bm_engine, findings, dq_res, _run_id = run_full_analytical_pipeline(
         raw_bundle=raw_bundle,
         dataset_version_id=ver_id,
     )
@@ -246,7 +246,7 @@ def test_fr_080_to_082_deterministic_explainability():
     """Explanations must use deterministic template substitution with zero generative hallucination."""
     ver_id = uuid4()
     raw_bundle, _ = generate_synthetic_soc_benchmark(seed=42, dataset_version_id=ver_id)
-    _, _, _, findings, _ = run_full_analytical_pipeline(raw_bundle, dataset_version_id=ver_id)
+    _, _, _, findings, _, _run_id = run_full_analytical_pipeline(raw_bundle, dataset_version_id=ver_id)
 
     assert len(findings) > 0
     sample_finding = findings[0]
@@ -269,7 +269,7 @@ def test_fr_090_to_091_drilldown_and_review():
     repo = SATRepository(db_path=False)
     ver_id = uuid4()
     raw_bundle, _ = generate_synthetic_soc_benchmark(seed=42, dataset_version_id=ver_id)
-    canonical_ds, reconstructed_ds, bm_engine, findings, dq_res = run_full_analytical_pipeline(
+    canonical_ds, reconstructed_ds, bm_engine, findings, dq_res, _run_id = run_full_analytical_pipeline(
         raw_bundle=raw_bundle,
         dataset_version_id=ver_id,
     )
@@ -311,8 +311,8 @@ def test_nfr_006_deterministic_reproducibility():
     bundle1, _ = generate_synthetic_soc_benchmark(seed=777, dataset_version_id=ver1)
     bundle2, _ = generate_synthetic_soc_benchmark(seed=777, dataset_version_id=ver2)
 
-    _, _, _, findings1, dq1 = run_full_analytical_pipeline(bundle1, dataset_version_id=ver1)
-    _, _, _, findings2, dq2 = run_full_analytical_pipeline(bundle2, dataset_version_id=ver2)
+    _, _, _, findings1, dq1, _r1 = run_full_analytical_pipeline(bundle1, dataset_version_id=ver1)
+    _, _, _, findings2, dq2, _r2 = run_full_analytical_pipeline(bundle2, dataset_version_id=ver2)
 
     assert len(findings1) == len(findings2)
     assert abs(dq1.score - dq2.score) < 1e-6
