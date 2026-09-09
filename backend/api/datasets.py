@@ -55,7 +55,7 @@ def load_demo_dataset(
         is_held_out=is_held_out,
     )
 
-    canonical_ds, reconstructed_ds, bm_engine, findings = run_full_analytical_pipeline(
+    canonical_ds, reconstructed_ds, bm_engine, findings, dq_res = run_full_analytical_pipeline(
         raw_bundle=raw_bundle,
         dataset_version_id=version_id,
     )
@@ -68,7 +68,7 @@ def load_demo_dataset(
         reconstructed_dataset=reconstructed_ds,
         benchmark_engine=bm_engine,
         findings=findings,
-        dq_score=0.92,
+        dq_score=round(dq_res.score, 4),
         description="Comprehensive multi-CSE dataset containing healthy baseline entities, Goodhart's Law execution gaps, and negative-space coverage monitoring anomalies.",
     )
 
@@ -80,6 +80,13 @@ def load_demo_dataset(
         "row_count": ver_meta.row_count,
         "cse_count": len(canonical_ds.cse_list),
         "findings_generated": len(findings),
+        "data_quality_score": round(dq_res.score, 4),
+        "data_quality_components": {
+            "completeness": round(dq_res.components.completeness_ratio, 4),
+            "consistency": round(dq_res.components.consistency_ratio, 4),
+            "coverage": round(dq_res.components.coverage_ratio, 4),
+            "sample_sufficiency": round(dq_res.components.sample_sufficiency_ratio, 4),
+        },
     }
 
 
@@ -89,28 +96,22 @@ async def upload_dataset_file(
     repo: SATRepository = Depends(get_repository),
     user: UserContext = Depends(get_current_user),
 ):
+    from backend.services.ingestion import parse_raw_payload, IngestionValidationError
+
     contents = await file.read()
     filename = file.filename or "upload.json"
-    
+
     try:
-        if filename.endswith(".json"):
-            raw_data = json.loads(contents.decode("utf-8"))
-            if isinstance(raw_data, list):
-                raw_bundle = {"alerts": raw_data}
-            elif isinstance(raw_data, dict):
-                raw_bundle = raw_data
-            else:
-                raise ValueError("JSON must be an array or object containing canonical entity lists.")
-        else:
-            # Fallback quick CSV wrapper
-            raw_bundle = {"alerts": []}
+        raw_bundle, warnings = parse_raw_payload(contents, filename)
+    except IngestionValidationError as e:
+        raise HTTPException(status_code=400, detail=f"Ingestion validation failed: {str(e)}")
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to parse uploaded file: {str(e)}")
 
     dataset_id = uuid4()
     version_id = uuid4()
 
-    canonical_ds, reconstructed_ds, bm_engine, findings = run_full_analytical_pipeline(
+    canonical_ds, reconstructed_ds, bm_engine, findings, dq_res = run_full_analytical_pipeline(
         raw_bundle=raw_bundle,
         dataset_version_id=version_id,
     )
@@ -123,7 +124,7 @@ async def upload_dataset_file(
         reconstructed_dataset=reconstructed_ds,
         benchmark_engine=bm_engine,
         findings=findings,
-        dq_score=0.88,
+        dq_score=round(dq_res.score, 4),
         description=f"User-submitted SOC operational evidence package ({filename})",
     )
 
@@ -133,6 +134,14 @@ async def upload_dataset_file(
         "dataset_version_id": str(version_id),
         "row_count": ver_meta.row_count,
         "findings_generated": len(findings),
+        "data_quality_score": round(dq_res.score, 4),
+        "data_quality_components": {
+            "completeness": round(dq_res.components.completeness_ratio, 4),
+            "consistency": round(dq_res.components.consistency_ratio, 4),
+            "coverage": round(dq_res.components.coverage_ratio, 4),
+            "sample_sufficiency": round(dq_res.components.sample_sufficiency_ratio, 4),
+        },
+        "parse_warnings": warnings,
     }
 
 

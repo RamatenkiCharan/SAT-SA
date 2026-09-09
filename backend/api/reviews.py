@@ -12,7 +12,7 @@ from pydantic import BaseModel
 
 from backend.models.canonical import ReviewDecisionState
 from backend.repositories.in_memory_repo import SATRepository, get_repository
-from backend.security.auth import UserContext, get_current_user
+from backend.security.auth import UserContext, require_supervisor
 
 router = APIRouter(prefix="/api/reviews", tags=["reviews"])
 
@@ -27,7 +27,7 @@ class ReviewSubmissionRequest(BaseModel):
 def submit_review_decision(
     req: ReviewSubmissionRequest,
     repo: SATRepository = Depends(get_repository),
-    user: UserContext = Depends(get_current_user),
+    user: UserContext = Depends(require_supervisor),
 ):
     finding = repo.get_finding_by_id(req.finding_id)
     if not finding:

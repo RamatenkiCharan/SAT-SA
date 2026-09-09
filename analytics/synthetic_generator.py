@@ -15,7 +15,9 @@ from analytics.canonicalization.canonicalization import CanonicalDataset, canoni
 from analytics.data_quality.quality_processor import evaluate_dataset_quality
 from analytics.execution_gap.escalation_gap import EscalationGapDetector
 from analytics.execution_gap.fast_closure import FastClosureDetector
+from analytics.execution_gap.investigation_sufficiency import InvestigationSufficiencyDetector
 from analytics.execution_gap.repeated_unresolved import RepeatedUnresolvedDetector
+from analytics.execution_gap.workflow_shortcuts import WorkflowShortcutDetector
 from analytics.fusion.evidence_fusion import EvidenceFusionEngine
 from analytics.negative_space.coverage_gap import CoverageGapDetector
 from analytics.peer_benchmark.benchmarks import PeerBenchmarkEngine
@@ -363,7 +365,8 @@ def generate_synthetic_soc_benchmark(
 def run_full_analytical_pipeline(
     raw_bundle: dict[str, list[dict[str, Any]]],
     dataset_version_id: UUID | None = None,
-) -> tuple[CanonicalDataset, ReconstructedDataset, PeerBenchmarkEngine, list[Finding]]:
+    ruleset_version: str = "V1",
+) -> tuple[CanonicalDataset, ReconstructedDataset, PeerBenchmarkEngine, list[Finding], DataQualityResult]:
     """
     Executes the complete end-to-end analytical pipeline:
     Canonicalization -> Workflow Reconstruction -> Peer Benchmarking -> Data Trust ->
@@ -382,21 +385,25 @@ def run_full_analytical_pipeline(
     benchmark_engine = PeerBenchmarkEngine(reconstructed_ds)
 
     # 4. Data Quality Engine
-    dq_result = evaluate_dataset_quality(canonical_ds, ver_id)
+    dq_result = evaluate_dataset_quality(canonical_ds, ver_id, ruleset_version=ruleset_version)
 
-    # 5. Detectors
+    # 5. Detectors (P0 and P1 Core Suites)
     fast_closure_detector = FastClosureDetector()
     escalation_gap_detector = EscalationGapDetector()
     repeated_unresolved_detector = RepeatedUnresolvedDetector()
     coverage_gap_detector = CoverageGapDetector()
+    investigation_sufficiency_detector = InvestigationSufficiencyDetector()
+    workflow_shortcut_detector = WorkflowShortcutDetector()
 
     fast_closures = fast_closure_detector.detect(reconstructed_ds, benchmark_engine)
     escalation_gaps = escalation_gap_detector.detect(reconstructed_ds)
     repeated_unresolved = repeated_unresolved_detector.detect(reconstructed_ds)
     coverage_gaps = coverage_gap_detector.detect(canonical_ds, dq_result.score)
+    inv_sufficiencies = investigation_sufficiency_detector.detect(reconstructed_ds, benchmark_engine)
+    wf_shortcuts = workflow_shortcut_detector.detect(reconstructed_ds)
 
     # 6. Evidence Fusion
-    fusion_engine = EvidenceFusionEngine()
+    fusion_engine = EvidenceFusionEngine(ruleset_version=ruleset_version)
     all_findings: list[Finding] = []
 
     for cse in canonical_ds.cse_list:
@@ -411,10 +418,12 @@ def run_full_analytical_pipeline(
             escalation_gaps=escalation_gaps,
             repeated_unresolved=repeated_unresolved,
             coverage_gaps=coverage_gaps,
+            investigation_sufficiencies=inv_sufficiencies,
+            workflow_shortcuts=wf_shortcuts,
         )
         all_findings.extend(cse_findings)
 
-    return canonical_ds, reconstructed_ds, benchmark_engine, all_findings
+    return canonical_ds, reconstructed_ds, benchmark_engine, all_findings, dq_result
 
 
 def evaluate_ground_truth_validation(
@@ -428,7 +437,7 @@ def evaluate_ground_truth_validation(
         seed=101 if is_held_out else 42,
         is_held_out=is_held_out,
     )
-    canonical_ds, reconstructed_ds, bm_engine, findings = run_full_analytical_pipeline(raw_bundle)
+    canonical_ds, reconstructed_ds, bm_engine, findings, _ = run_full_analytical_pipeline(raw_bundle)
 
     # Build ground truth weakness map
     gt_map: dict[UUID, set[str]] = {}

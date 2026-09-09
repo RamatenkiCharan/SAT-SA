@@ -139,3 +139,14 @@ def compute_data_quality_score(
         ruleset_version=ruleset_version,
         computed_at=datetime.now(timezone.utc),
     )
+
+
+def evaluate_dataset_quality(
+    dataset,
+    dataset_version_id: Optional[UUID] = None,
+    weights: Optional[dict] = None,
+    ruleset_version: str = "V1",
+) -> DataQualityResult:
+    from analytics.data_quality.quality_processor import evaluate_dataset_quality as _eval_dq
+    ver_id = dataset_version_id or getattr(dataset, "dataset_version_id", None) or UUID("00000000-0000-0000-0000-000000000000")
+    return _eval_dq(dataset, dataset_version_id=ver_id, weights=weights, ruleset_version=ruleset_version)

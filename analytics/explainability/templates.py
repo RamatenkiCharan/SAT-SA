@@ -57,6 +57,26 @@ def generate_finding_explanation(finding: Finding) -> dict[str, Any]:
             "Request engineering ticket logs for affected asset. Determine why alert triggers keep firing "
             "and whether compensating controls or patch remediations were actually deployed."
         )
+    elif f_type == FindingType.INVESTIGATION_INSUFFICIENCY:
+        title = "Superficial Investigation Execution Gap"
+        headline = (
+            f"Supervisory attention recommended: High-severity security events closed with minimal "
+            f"or zero attached investigation evidence, indicating low-depth analyst triage."
+        )
+        recommended_action = (
+            "Inspect analyst investigation logs and ticketing artifacts. Determine if triage was "
+            "automated superficially or if analysts lack necessary forensic tooling."
+        )
+    elif f_type == FindingType.WORKFLOW_SHORTCUT:
+        title = "Suspicious Lifecycle Workflow Shortcut"
+        headline = (
+            f"Supervisory attention recommended: Security incidents bypassed mandatory lifecycle phases "
+            f"(e.g., direct closure without investigation or instantaneous transition)."
+        )
+        recommended_action = (
+            "Audit SOAR automation playbooks and manual bypass permissions. Verify why mandatory "
+            "investigation gates were omitted prior to ticket closure."
+        )
     elif f_type == FindingType.COVERAGE_GAP:
         title = "Negative-Space Monitoring Coverage Gap"
         headline = (

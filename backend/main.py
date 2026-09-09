@@ -15,11 +15,13 @@ from fastapi.staticfiles import StaticFiles
 
 from analytics.synthetic_generator import generate_synthetic_soc_benchmark, run_full_analytical_pipeline
 from backend.api.audit import router as audit_router
+from backend.api.auth import router as auth_router
 from backend.api.benchmarks import router as benchmarks_router
 from backend.api.datasets import router as datasets_router
 from backend.api.export import router as export_router
 from backend.api.findings import router as findings_router
 from backend.api.reviews import router as reviews_router
+from backend.api.rulesets import router as rulesets_router
 from backend.api.validation import router as validation_router
 from backend.repositories.in_memory_repo import get_repository
 
@@ -32,7 +34,7 @@ async def lifespan(app: FastAPI):
         dataset_id = uuid4()
         version_id = uuid4()
         raw_bundle, _ = generate_synthetic_soc_benchmark(seed=42, dataset_version_id=version_id)
-        canonical_ds, reconstructed_ds, bm_engine, findings = run_full_analytical_pipeline(
+        canonical_ds, reconstructed_ds, bm_engine, findings, dq_res = run_full_analytical_pipeline(
             raw_bundle=raw_bundle,
             dataset_version_id=version_id,
         )
@@ -44,7 +46,7 @@ async def lifespan(app: FastAPI):
             reconstructed_dataset=reconstructed_ds,
             benchmark_engine=bm_engine,
             findings=findings,
-            dq_score=0.92,
+            dq_score=round(dq_res.score, 4),
             description="Pre-seeded multi-sector CSE operational evidence bundle featuring National Power Dispatch Center (NPDC) Goodhart's Law case study.",
         )
     yield
@@ -67,6 +69,7 @@ app.add_middleware(
 )
 
 # Mount API routers
+app.include_router(auth_router)
 app.include_router(datasets_router)
 app.include_router(findings_router)
 app.include_router(reviews_router)
@@ -74,6 +77,7 @@ app.include_router(benchmarks_router)
 app.include_router(validation_router)
 app.include_router(audit_router)
 app.include_router(export_router)
+app.include_router(rulesets_router)
 
 
 @app.get("/api/health")

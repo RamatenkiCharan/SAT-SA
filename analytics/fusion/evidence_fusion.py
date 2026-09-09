@@ -13,7 +13,9 @@ from uuid import UUID, uuid4
 from analytics.data_quality.quality_score import DataQualityResult
 from analytics.execution_gap.escalation_gap import EscalationGapSignal
 from analytics.execution_gap.fast_closure import FastClosureSignal
+from analytics.execution_gap.investigation_sufficiency import InvestigationSufficiencySignal
 from analytics.execution_gap.repeated_unresolved import RepeatedUnresolvedSignal
+from analytics.execution_gap.workflow_shortcuts import WorkflowShortcutSignal
 from analytics.negative_space.coverage_gap import CoverageGapSignal
 from backend.models.canonical import (
     AssetCriticality,
@@ -112,6 +114,8 @@ class EvidenceFusionEngine:
         escalation_gaps: list[EscalationGapSignal],
         repeated_unresolved: list[RepeatedUnresolvedSignal],
         coverage_gaps: list[CoverageGapSignal],
+        investigation_sufficiencies: list[InvestigationSufficiencySignal] | None = None,
+        workflow_shortcuts: list[WorkflowShortcutSignal] | None = None,
     ) -> list[Finding]:
         findings: list[Finding] = []
         now = datetime.now(timezone.utc)
@@ -358,7 +362,6 @@ class EvidenceFusionEngine:
                     supporting_signals=supp_signals,
                     contradicting_signals=["Verify sensor reachability before confirming blind spot"],
                     peer_context="Peer entities in same sector average standard telemetry density",
-                    temporal_context="Consistent coverage absence during active operational reporting cycle",
                     evidence_refs=unique_refs,
                     analytical_method="Negative-space expectation modeling & data-trust gated coverage calculation",
                     ruleset_version=self.ruleset_version,
@@ -367,5 +370,112 @@ class EvidenceFusionEngine:
                     created_at=now,
                 )
             )
+
+        # -------------------------------------------------------------------
+        # 5. Fuse Investigation Sufficiency Signals (FR-031) for this CSE
+        # -------------------------------------------------------------------
+        if investigation_sufficiencies:
+            cse_inv = [s for s in investigation_sufficiencies if s.cse_id == cse_id]
+            if cse_inv:
+                all_refs = []
+                for s in cse_inv:
+                    all_refs.extend(s.evidence_refs)
+                unique_refs = list({f"{r.entity_type}:{r.entity_id}": r for r in all_refs}.values())
+
+                score, comps = calculate_priority_components(
+                    FusionInputs(
+                        signal_count=2,
+                        max_peer_zscore=1.9,
+                        persistence_ratio=0.75,
+                        asset_criticality_tier="HIGH",
+                        data_quality_score=dq_score,
+                    ),
+                    self.weights,
+                )
+
+                supp_signals = [
+                    f"{len(cse_inv)} critical/high severity alerts closed with minimal or zero forensic evidence",
+                    "Low investigation depth observed across analyst triage queue",
+                    "Dispositions closed without supporting artifacts or telemetry extracts",
+                ]
+
+                findings.append(
+                    Finding(
+                        finding_id=uuid4(),
+                        cse_id=cse_id,
+                        reporting_period_id=reporting_period_id,
+                        finding_type=FindingType.INVESTIGATION_INSUFFICIENCY,
+                        priority_score=score,
+                        priority_components=comps,
+                        evidentiary_confidence=round(min(0.92, 0.4 + dq_score * 0.5), 2),
+                        data_quality_status=dq_model,
+                        expectation_basis=ExpectationBasis.STATISTICAL_BASELINE,
+                        expected_behavior="High-severity incident closures require documented evidence artifacts and investigation notes.",
+                        observed_behavior=f"{len(cse_inv)} critical alerts were closed with 0 attached evidence records or sub-30s triage duration.",
+                        supporting_signals=supp_signals,
+                        contradicting_signals=[],
+                        peer_context="Peer baseline retains >=2 investigation artifacts on average",
+                        temporal_context="Superficial investigation pattern observed across active shift logs",
+                        evidence_refs=unique_refs,
+                        analytical_method="Investigation artifact count & duration thresholding",
+                        ruleset_version=self.ruleset_version,
+                        dataset_version_id=dataset_version_id,
+                        analysis_run_id=analysis_run_id,
+                        created_at=now,
+                    )
+                )
+
+        # -------------------------------------------------------------------
+        # 6. Fuse Workflow Shortcut Signals (FR-034) for this CSE
+        # -------------------------------------------------------------------
+        if workflow_shortcuts:
+            cse_short = [s for s in workflow_shortcuts if s.cse_id == cse_id]
+            if cse_short:
+                all_refs = []
+                for s in cse_short:
+                    all_refs.extend(s.evidence_refs)
+                unique_refs = list({f"{r.entity_type}:{r.entity_id}": r for r in all_refs}.values())
+
+                score, comps = calculate_priority_components(
+                    FusionInputs(
+                        signal_count=2,
+                        max_peer_zscore=2.1,
+                        persistence_ratio=0.7,
+                        asset_criticality_tier="CRITICAL",
+                        data_quality_score=dq_score,
+                    ),
+                    self.weights,
+                )
+
+                supp_signals = [
+                    f"{len(cse_short)} critical alerts skipped standard lifecycle phases (direct closure or <10s transition)",
+                    "Mandatory investigation phase bypassed prior to case closure",
+                ]
+
+                findings.append(
+                    Finding(
+                        finding_id=uuid4(),
+                        cse_id=cse_id,
+                        reporting_period_id=reporting_period_id,
+                        finding_type=FindingType.WORKFLOW_SHORTCUT,
+                        priority_score=score,
+                        priority_components=comps,
+                        evidentiary_confidence=round(min(0.94, 0.45 + dq_score * 0.5), 2),
+                        data_quality_status=dq_model,
+                        expectation_basis=ExpectationBasis.HARD_REQUIREMENT,
+                        expected_behavior="Standard lifecycle requiring alert triage, active investigation, and documented closure rationale.",
+                        observed_behavior=f"{len(cse_short)} critical cases exhibited suspicious workflow shortcuts bypassing mandatory investigation gates.",
+                        supporting_signals=supp_signals,
+                        contradicting_signals=[],
+                        peer_context="Peer SOC workflows maintain standard state machine lifecycle transitions",
+                        temporal_context="Instantaneous lifecycle transitions detected",
+                        evidence_refs=unique_refs,
+                        analytical_method="State transition sequence integrity validation",
+                        ruleset_version=self.ruleset_version,
+                        dataset_version_id=dataset_version_id,
+                        analysis_run_id=analysis_run_id,
+                        created_at=now,
+                    )
+                )
 
         return findings

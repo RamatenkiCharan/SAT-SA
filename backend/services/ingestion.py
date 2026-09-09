@@ -107,40 +107,56 @@ def _parse_json(path: Path) -> tuple[list[dict[str, Any]], list[str]]:
     return rows, warnings
 
 
-def ingest_raw_file(
-    path: Path,
-    dataset_id: UUID,
-    next_version_number: int,
-    transformation_version: str = "T1",
-    schema_version: str = "S1",
-) -> RawImportResult:
+def parse_raw_payload(
+    contents: bytes,
+    filename: str,
+) -> tuple[dict[str, list[dict[str, Any]]], list[str]]:
     """
-    Land a single raw source file as a new, immutable dataset_version.
-
-    `next_version_number` must be supplied by the caller after looking up
-    the current max version for `dataset_id` (kept explicit here rather than
-    computed internally, so the repository layer - which actually talks to
-    Postgres - owns the single source of truth for "what's the next version").
+    Parses uploaded raw bytes (CSV or JSON) into a standard raw_bundle dictionary.
+    Supports single-table alert CSVs and multi-entity JSON packs.
     """
-    _validate_file(path)
+    ext = Path(filename).suffix.lower()
+    if ext not in _ALLOWED_EXTENSIONS:
+        raise IngestionValidationError(
+            f"Unsupported file format '{ext}'. Only .csv and .json files are supported."
+        )
 
-    if path.suffix.lower() == ".csv":
-        rows, warnings = _parse_csv(path)
-    else:
-        rows, warnings = _parse_json(path)
+    if len(contents) > _MAX_FILE_SIZE_BYTES:
+        raise IngestionValidationError(f"File exceeds maximum size of {_MAX_FILE_SIZE_BYTES} bytes.")
 
-    dataset_version = DatasetVersionRecord(
-        dataset_version_id=uuid4(),
-        dataset_id=dataset_id,
-        version_number=next_version_number,
-        source_file_ref=str(path),
-        import_time=datetime.now(timezone.utc),
-        transformation_version=transformation_version,
-        schema_version=schema_version,
-    )
+    warnings: list[str] = []
+    text = contents.decode("utf-8-sig", errors="replace")
 
-    return RawImportResult(
-        dataset_version=dataset_version,
-        row_count=len(rows),
-        parse_warnings=warnings,
-    )
+    if ext == ".json":
+        try:
+            data = json.loads(text)
+        except json.JSONDecodeError as exc:
+            raise IngestionValidationError(f"Malformed JSON: {exc}") from exc
+
+        if isinstance(data, dict):
+            # Already a bundle or single object
+            if "alerts" in data or "cse" in data or "assets" in data:
+                return data, warnings
+            return {"alerts": [data]}, warnings
+        elif isinstance(data, list):
+            # Array of alert records
+            return {"alerts": data}, warnings
+        else:
+            raise IngestionValidationError("Top-level JSON must be an object or an array of objects.")
+
+    elif ext == ".csv":
+        import io
+        f = io.StringIO(text)
+        reader = csv.DictReader(f)
+        if reader.fieldnames is None:
+            raise IngestionValidationError("CSV has no header row.")
+
+        rows: list[dict[str, Any]] = []
+        for i, row in enumerate(reader):
+            if None in row:
+                warnings.append(f"Row {i}: excess columns mapped under None.")
+            rows.append(row)
+
+        return {"alerts": rows}, warnings
+
+    return {"alerts": []}, warnings

@@ -80,6 +80,20 @@ class CanonicalDataset:
         self.closures: list[Closure] = closures or []
         self.coverage_observations: list[CoverageObservation] = coverage_observations or []
 
+    def to_dict(self) -> dict[str, list[dict[str, Any]]]:
+        return {
+            "cse": [x.model_dump(mode="json") for x in self.cse_list],
+            "reporting_periods": [x.model_dump(mode="json") for x in self.reporting_periods],
+            "assets": [x.model_dump(mode="json") for x in self.assets],
+            "alerts": [x.model_dump(mode="json") for x in self.alerts],
+            "investigations": [x.model_dump(mode="json") for x in self.investigations],
+            "cases": [x.model_dump(mode="json") for x in self.cases],
+            "escalations": [x.model_dump(mode="json") for x in self.escalations],
+            "actions": [x.model_dump(mode="json") for x in self.actions],
+            "closures": [x.model_dump(mode="json") for x in self.closures],
+            "coverage_observations": [x.model_dump(mode="json") for x in self.coverage_observations],
+        }
+
 
 def canonicalize_records(
     raw_bundle: dict[str, list[dict[str, Any]]],

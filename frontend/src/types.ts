@@ -2,8 +2,10 @@ export type Severity = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "INFO";
 
 export type FindingType =
   | "FAST_CLOSURE"
+  | "INVESTIGATION_INSUFFICIENCY"
   | "ESCALATION_GAP"
   | "REPEATED_UNRESOLVED_ALERTS"
+  | "WORKFLOW_SHORTCUT"
   | "COVERAGE_GAP";
 
 export type ReviewDecisionState =

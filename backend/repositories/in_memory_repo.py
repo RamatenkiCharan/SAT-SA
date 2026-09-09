@@ -5,12 +5,13 @@ findings, evidence linkages, review decisions, and immutable audit logs.
 """
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Optional
 from uuid import UUID, uuid4
 
-from analytics.canonicalization.canonicalization import CanonicalDataset
+from analytics.canonicalization.canonicalization import CanonicalDataset, canonicalize_records
 from analytics.data_quality.quality_score import DataQualityResult
 from analytics.peer_benchmark.benchmarks import PeerBenchmarkEngine, PeerBenchmarkResult
 from analytics.workflow.workflow_reconstruction import ReconstructedDataset
@@ -19,6 +20,7 @@ from backend.models.canonical import (
     FindingType,
     ReviewDecisionState,
 )
+from backend.repositories.sqlite_repo import SQLiteDatabase, DEFAULT_DB_PATH
 
 
 @dataclass
@@ -67,7 +69,7 @@ class ReviewDecisionRecord:
 
 
 class SATRepository:
-    def __init__(self):
+    def __init__(self, db_path: Optional[str] = None):
         self.datasets: dict[UUID, DatasetMetadata] = {}
         self.dataset_versions: dict[UUID, DatasetVersionMetadata] = {}
         self.canonical_datasets: dict[UUID, CanonicalDataset] = {}
@@ -78,6 +80,92 @@ class SATRepository:
         self.review_decisions: list[ReviewDecisionRecord] = []
         self.audit_events: list[AuditEvent] = []
         self.active_dataset_version_id: Optional[UUID] = None
+
+        self.db = SQLiteDatabase(db_path or DEFAULT_DB_PATH) if db_path is not False else None
+        if self.db:
+            self._rehydrate_from_db()
+
+    def _rehydrate_from_db(self) -> None:
+        if not self.db:
+            return
+        try:
+            data = self.db.load_all_data()
+            for row in data["datasets"]:
+                ds_id = UUID(row["dataset_id"])
+                self.datasets[ds_id] = DatasetMetadata(
+                    dataset_id=ds_id,
+                    name=row["name"],
+                    description=row["description"] or "",
+                    created_at=datetime.fromisoformat(row["created_at"]),
+                )
+            for row in data["versions"]:
+                ver_id = UUID(row["dataset_version_id"])
+                ds_id = UUID(row["dataset_id"])
+                ver_meta = DatasetVersionMetadata(
+                    dataset_version_id=ver_id,
+                    dataset_id=ds_id,
+                    version_number=row["version_number"],
+                    source_file_ref=row["source_file_ref"],
+                    import_time=datetime.fromisoformat(row["import_time"]),
+                    transformation_version=row["transformation_version"],
+                    schema_version=row["schema_version"],
+                    row_count=row["row_count"],
+                    data_quality_score=row["data_quality_score"],
+                )
+                if ds_id in self.datasets:
+                    self.datasets[ds_id].versions.append(ver_meta)
+                self.dataset_versions[ver_id] = ver_meta
+
+                # Reconstruct canonical and workflow graphs
+                canonical_dict = json.loads(row["canonical_data_json"])
+                canonical_ds = canonicalize_records(canonical_dict, dataset_version_id=ver_id)
+                reconstructed_ds = ReconstructedDataset(canonical_ds)
+                bm_engine = PeerBenchmarkEngine(reconstructed_ds)
+
+                self.canonical_datasets[ver_id] = canonical_ds
+                self.reconstructed_datasets[ver_id] = reconstructed_ds
+                self.benchmark_engines[ver_id] = bm_engine
+                self.findings_by_version[ver_id] = []
+                self.active_dataset_version_id = ver_id
+
+            for row in data["findings"]:
+                f_dict = json.loads(row["finding_json"])
+                if row["review_status"]:
+                    f_dict["review_status"] = row["review_status"]
+                if row["review_notes"]:
+                    f_dict["review_notes"] = row["review_notes"]
+                f = Finding.model_validate(f_dict)
+                self.findings_by_id[f.finding_id] = f
+                ver_id = f.dataset_version_id
+                if ver_id in self.findings_by_version:
+                    self.findings_by_version[ver_id].append(f)
+
+            for row in data["reviews"]:
+                rec = ReviewDecisionRecord(
+                    review_decision_id=UUID(row["review_decision_id"]),
+                    finding_id=UUID(row["finding_id"]),
+                    decision=ReviewDecisionState(row["decision"]),
+                    reviewer_id=row["reviewer_id"],
+                    reviewer_name=row["reviewer_name"],
+                    decided_at=datetime.fromisoformat(row["decided_at"]),
+                    notes=row["notes"],
+                )
+                self.review_decisions.append(rec)
+
+            for row in data["audit_events"]:
+                ev = AuditEvent(
+                    audit_event_id=UUID(row["audit_event_id"]),
+                    user_id=row["user_id"],
+                    username=row["username"],
+                    action=row["action"],
+                    target_type=row["target_type"],
+                    target_id=row["target_id"],
+                    occurred_at=datetime.fromisoformat(row["occurred_at"]),
+                    details=json.loads(row["details_json"]),
+                )
+                self.audit_events.append(ev)
+        except Exception:
+            pass
 
     # -----------------------------------------------------------------------
     # Audit Log
@@ -102,6 +190,20 @@ class SATRepository:
             details=details or {},
         )
         self.audit_events.insert(0, event)
+        if self.db:
+            try:
+                self.db.save_audit_event(
+                    audit_event_id=event.audit_event_id,
+                    user_id=event.user_id,
+                    username=event.username,
+                    action=event.action,
+                    target_type=event.target_type,
+                    target_id=event.target_id,
+                    occurred_at=event.occurred_at,
+                    details=event.details,
+                )
+            except Exception:
+                pass
         return event
 
     def get_audit_events(self, limit: int = 100) -> list[AuditEvent]:
@@ -125,12 +227,23 @@ class SATRepository:
         ver_id = canonical_dataset.dataset_version_id
 
         if dataset_id not in self.datasets:
-            self.datasets[dataset_id] = DatasetMetadata(
+            ds_meta = DatasetMetadata(
                 dataset_id=dataset_id,
                 name=dataset_name,
                 description=description,
                 created_at=datetime.now(timezone.utc),
             )
+            self.datasets[dataset_id] = ds_meta
+            if self.db:
+                try:
+                    self.db.save_dataset(
+                        dataset_id=dataset_id,
+                        name=dataset_name,
+                        description=description,
+                        created_at=ds_meta.created_at,
+                    )
+                except Exception:
+                    pass
 
         ver_meta = DatasetVersionMetadata(
             dataset_version_id=ver_id,
@@ -150,11 +263,29 @@ class SATRepository:
         self.reconstructed_datasets[ver_id] = reconstructed_dataset
         self.benchmark_engines[ver_id] = benchmark_engine
         self.findings_by_version[ver_id] = findings
-        
+
         for f in findings:
             self.findings_by_id[f.finding_id] = f
 
         self.active_dataset_version_id = ver_id
+
+        if self.db:
+            try:
+                self.db.save_dataset_version(
+                    dataset_version_id=ver_id,
+                    dataset_id=dataset_id,
+                    version_number=ver_meta.version_number,
+                    source_file_ref=source_file_ref,
+                    import_time=ver_meta.import_time,
+                    transformation_version=ver_meta.transformation_version,
+                    schema_version=ver_meta.schema_version,
+                    row_count=ver_meta.row_count,
+                    data_quality_score=dq_score,
+                    canonical_dataset=canonical_dataset,
+                    findings=findings,
+                )
+            except Exception:
+                pass
 
         self.record_audit_event(
             user_id="system",
@@ -389,6 +520,20 @@ class SATRepository:
             notes=notes,
         )
         self.review_decisions.append(record)
+
+        if self.db:
+            try:
+                self.db.save_review_decision(
+                    review_decision_id=record.review_decision_id,
+                    finding_id=finding_id,
+                    decision=decision,
+                    reviewer_id=reviewer_id,
+                    reviewer_name=reviewer_name,
+                    decided_at=record.decided_at,
+                    notes=notes,
+                )
+            except Exception:
+                pass
 
         self.record_audit_event(
             user_id=reviewer_id,

@@ -84,8 +84,18 @@ export const Navbar: React.FC<NavbarProps> = ({
           })}
         </nav>
 
-        {/* Quick Demo Switcher */}
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+        {/* Quick Actions & Demo Switcher */}
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <a
+            href="/api/export/report/html"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-primary"
+            style={{ fontSize: "0.78rem", padding: "0.4rem 0.8rem", textDecoration: "none", display: "flex", alignItems: "center", gap: "4px" }}
+            title="Generate and Print Executive NCIIPC Assessment Report"
+          >
+            📄 Export Report
+          </a>
           <button
             onClick={() => onLoadDemo("critical_infrastructure")}
             className="btn-secondary"
