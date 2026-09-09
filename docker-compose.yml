@@ -1,0 +1,36 @@
+version: "3.9"
+
+# Prototype deployment only (SRS §18). No external network dependency:
+# everything here runs on the local Docker network, with no outbound
+# service configured. Verify with a dependency/network audit before demo
+# (SRS §15.1 hackathon baseline requirement).
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: satsa
+      POSTGRES_USER: satsa
+      POSTGRES_PASSWORD: satsa_dev_only_change_me
+    ports:
+      - "5432:5432"
+    volumes:
+      - satsa_pgdata:/var/lib/postgresql/data
+      - ./database/migrations:/docker-entrypoint-initdb.d/migrations
+      - ./database/seed:/docker-entrypoint-initdb.d/seed
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgresql://satsa:satsa_dev_only_change_me@db:5432/satsa
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+
+volumes:
+  satsa_pgdata:
