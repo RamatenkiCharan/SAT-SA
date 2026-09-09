@@ -2,10 +2,16 @@
 SAT-SA One-Click Application Runner.
 Starts the FastAPI backend and serves the interactive supervisory dashboard on port 8000.
 """
+import os
 import sys
 import webbrowser
 from pathlib import Path
-import subprocess
+
+# Ensure SAT-SA root is in Python path and current working directory
+APP_DIR = Path(__file__).resolve().parent
+if str(APP_DIR) not in sys.path:
+    sys.path.insert(0, str(APP_DIR))
+os.chdir(APP_DIR)
 
 def main():
     print("=" * 70)
