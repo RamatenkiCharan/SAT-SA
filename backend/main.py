@@ -1,64 +1,95 @@
 """
-SAT-SA backend entrypoint.
-
-P0-A scope only: health check + a dataset-upload endpoint wired to the
-ingestion service skeleton. Auth/RBAC, findings, peers, analysis-run
-endpoints are P0-B/C/D work and are deliberately NOT stubbed here yet -
-adding empty placeholder routers now would just be undocumented scope
-drift (AGENTS.md §72). Add them in the task that actually implements them.
-
-Run locally:
-    uvicorn backend.main:app --reload
+SAT-SA Backend Application Entrypoint.
+Wires REST routers, CORS middleware, offline air-gapped readiness, pre-seeds demo benchmark data,
+and serves the React SPA frontend.
 """
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import FastAPI, HTTPException, UploadFile
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
-from backend.services.ingestion import IngestionValidationError, ingest_raw_file
+from analytics.synthetic_generator import generate_synthetic_soc_benchmark, run_full_analytical_pipeline
+from backend.api.audit import router as audit_router
+from backend.api.benchmarks import router as benchmarks_router
+from backend.api.datasets import router as datasets_router
+from backend.api.export import router as export_router
+from backend.api.findings import router as findings_router
+from backend.api.reviews import router as reviews_router
+from backend.api.validation import router as validation_router
+from backend.repositories.in_memory_repo import get_repository
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Pre-seed baseline multi-sector critical infrastructure demo pack
+    repo = get_repository()
+    if not repo.datasets:
+        dataset_id = uuid4()
+        version_id = uuid4()
+        raw_bundle, _ = generate_synthetic_soc_benchmark(seed=42, dataset_version_id=version_id)
+        canonical_ds, reconstructed_ds, bm_engine, findings = run_full_analytical_pipeline(
+            raw_bundle=raw_bundle,
+            dataset_version_id=version_id,
+        )
+        repo.register_dataset_version(
+            dataset_id=dataset_id,
+            dataset_name="Multi-Sector Critical Infrastructure SOC Operational Evidence Pack (Default)",
+            source_file_ref="synthetic://sih-problem-26157-default",
+            canonical_dataset=canonical_ds,
+            reconstructed_dataset=reconstructed_ds,
+            benchmark_engine=bm_engine,
+            findings=findings,
+            dq_score=0.92,
+            description="Pre-seeded multi-sector CSE operational evidence bundle featuring National Power Dispatch Center (NPDC) Goodhart's Law case study.",
+        )
+    yield
+
 
 app = FastAPI(
-    title="SAT-SA API",
-    description="Supervisory Analytics Tool for SOC Assessment - P0 prototype API.",
-    version="0.1.0-p0a",
+    title="SAT-SA Supervisory Analytics API",
+    description="Supervisory Analytics Tool for SOC Assessment (SIH Problem 26157) - NCIIPC Operational Evidence Examiner.",
+    version="1.0.0",
+    lifespan=lifespan,
 )
 
-_UPLOAD_DIR = Path("/tmp/sat-sa-uploads")  # dev-only sandbox path; replace with
-_UPLOAD_DIR.mkdir(exist_ok=True)           # a configured, access-controlled dir before demo.
+# Enable CORS for local web interface
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Mount API routers
+app.include_router(datasets_router)
+app.include_router(findings_router)
+app.include_router(reviews_router)
+app.include_router(benchmarks_router)
+app.include_router(validation_router)
+app.include_router(audit_router)
+app.include_router(export_router)
 
 
 @app.get("/api/health")
 def health() -> dict:
-    return {"status": "ok", "offline_mode": True}
-
-
-@app.post("/api/datasets")
-async def create_dataset(file: UploadFile):
-    """
-    Minimal P0-A upload path: land the file, create a new dataset_version.
-    Persistence to Postgres (dataset_versions row insert) is deliberately
-    NOT wired yet - this endpoint currently returns the parsed in-memory
-    result so the ingestion logic can be exercised end-to-end before the
-    repository layer exists. Wiring the DB insert is the next bounded task.
-    """
-    dest = _UPLOAD_DIR / f"{uuid4()}_{file.filename}"
-    contents = await file.read()
-    dest.write_bytes(contents)
-
-    try:
-        result = ingest_raw_file(
-            path=dest,
-            dataset_id=uuid4(),       # TODO(P0-A next task): resolve real dataset_id via repository
-            next_version_number=1,   # TODO(P0-A next task): compute from DB, not hardcoded
-        )
-    except IngestionValidationError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-
+    repo = get_repository()
     return {
-        "dataset_version_id": str(result.dataset_version.dataset_version_id),
-        "row_count": result.row_count,
-        "parse_warnings": result.parse_warnings,
-        "note": "Row 1-level persistence to Postgres not yet wired - see docs/current-state.md",
+        "status": "ok",
+        "service": "SAT-SA Supervisory Analytics Engine",
+        "offline_mode": True,
+        "active_version_id": str(repo.active_dataset_version_id) if repo.active_dataset_version_id else None,
+        "datasets_count": len(repo.datasets),
+        "audit_events_count": len(repo.audit_events),
     }
+
+
+# Mount Static Frontend (if built)
+_FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+if _FRONTEND_DIST.exists():
+    app.mount("/", StaticFiles(directory=str(_FRONTEND_DIST), html=True), name="frontend")
