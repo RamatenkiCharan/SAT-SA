@@ -8,12 +8,14 @@ interface NavbarProps {
   activeVersionId: string | null;
   datasets: DatasetItem[];
   onLoadDemo: (type: "critical_infrastructure" | "held_out_test") => void;
+  loadingDemo?: boolean;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   setActiveTab,
   onLoadDemo,
+  loadingDemo,
 }) => {
   const navItems = [
     { id: "overview", label: "Executive Overview", icon: Activity },
@@ -40,7 +42,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 SAT<span style={{ color: "var(--accent-cyan)" }}>-SA</span>
               </span>
               <span className="badge badge-cyan" style={{ fontSize: "0.68rem" }}>
-                SIH 26157
+                SUPERVISORY ANALYTICS
               </span>
               <span className="badge" style={{ background: "rgba(16, 185, 129, 0.15)", color: "#10b981", border: "1px solid rgba(16, 185, 129, 0.3)" }}>
                 <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#10b981", display: "inline-block", marginRight: "3px" }} className="pulse-live"></span>
@@ -88,11 +90,12 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
           <button
             onClick={() => onLoadDemo("critical_infrastructure")}
+            disabled={loadingDemo}
             className="btn-secondary"
-            style={{ fontSize: "0.78rem", padding: "0.4rem 0.8rem" }}
+            style={{ fontSize: "0.78rem", padding: "0.4rem 0.8rem", opacity: loadingDemo ? 0.7 : 1 }}
             title="Reload Default Critical Infrastructure Multi-CSE Benchmark"
           >
-            ⚡ Load Demo Pack
+            {loadingDemo ? "⚡ Loading..." : "⚡ Load Demo Pack"}
           </button>
         </div>
 

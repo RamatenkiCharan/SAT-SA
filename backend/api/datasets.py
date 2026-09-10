@@ -48,18 +48,31 @@ def load_demo_dataset(
     repo: SATRepository = Depends(get_repository),
     user: UserContext = Depends(require_supervisor),
 ):
+    import hashlib
+    from backend.services.ingestion import FileFormat, parse_raw_payload
+
     is_held_out = req.scenario_type == "held_out_test"
     dataset_id = uuid4()
     version_id = uuid4()
+    sample_filename = "held_out_validation_benchmark.json" if is_held_out else "multi_sector_soc_benchmark.json"
+    sample_path = Path(__file__).resolve().parent.parent.parent / "sample_data" / sample_filename
+
     ds_name = req.dataset_name or (
         "Held-Out Validation Benchmark (v2.0)" if is_held_out else "Multi-Sector Critical Infrastructure SOC Operational Evidence Pack"
     )
 
-    raw_bundle, scenarios = generate_synthetic_soc_benchmark(
-        seed=101 if is_held_out else 42,
-        dataset_version_id=version_id,
-        is_held_out=is_held_out,
-    )
+    if sample_path.exists():
+        contents = sample_path.read_bytes()
+        sha256_hash = hashlib.sha256(contents).hexdigest()
+        raw_bundle, warnings = parse_raw_payload(contents, FileFormat.JSON)
+        source_ref = f"sample_data/{sample_filename} (sha256:{sha256_hash[:12]})"
+    else:
+        raw_bundle, scenarios = generate_synthetic_soc_benchmark(
+            seed=101 if is_held_out else 42,
+            dataset_version_id=version_id,
+            is_held_out=is_held_out,
+        )
+        source_ref = f"synthetic://sih-problem-26157-{req.scenario_type}"
 
     pipeline_res = run_full_analytical_pipeline(
         raw_bundle=raw_bundle,
@@ -69,7 +82,7 @@ def load_demo_dataset(
     ver_meta = repo.register_dataset_version(
         dataset_id=dataset_id,
         dataset_name=ds_name,
-        source_file_ref="synthetic://sih-problem-26157-benchmark",
+        source_file_ref=source_ref,
         canonical_dataset=pipeline_res.canonical_dataset,
         reconstructed_dataset=pipeline_res.reconstructed_dataset,
         benchmark_engine=pipeline_res.benchmark_engine,

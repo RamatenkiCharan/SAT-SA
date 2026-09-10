@@ -32,9 +32,22 @@ async def lifespan(app: FastAPI):
     # Startup: Pre-seed baseline multi-sector critical infrastructure demo pack
     repo = get_repository()
     if not repo.datasets:
+        import hashlib
+        from backend.services.ingestion import FileFormat, parse_raw_payload
+
         dataset_id = uuid4()
         version_id = uuid4()
-        raw_bundle, _ = generate_synthetic_soc_benchmark(seed=42, dataset_version_id=version_id)
+        sample_path = Path(__file__).resolve().parent.parent / "sample_data" / "multi_sector_soc_benchmark.json"
+
+        if sample_path.exists():
+            contents = sample_path.read_bytes()
+            sha256_hash = hashlib.sha256(contents).hexdigest()
+            raw_bundle, _ = parse_raw_payload(contents, FileFormat.JSON)
+            source_ref = f"sample_data/multi_sector_soc_benchmark.json (sha256:{sha256_hash[:12]})"
+        else:
+            raw_bundle, _ = generate_synthetic_soc_benchmark(seed=42, dataset_version_id=version_id)
+            source_ref = "synthetic://sih-problem-26157-default"
+
         pipeline_res = run_full_analytical_pipeline(
             raw_bundle=raw_bundle,
             dataset_version_id=version_id,
@@ -42,13 +55,14 @@ async def lifespan(app: FastAPI):
         repo.register_dataset_version(
             dataset_id=dataset_id,
             dataset_name="Multi-Sector Critical Infrastructure SOC Operational Evidence Pack (Default)",
-            source_file_ref="synthetic://sih-problem-26157-default",
+            source_file_ref=source_ref,
             canonical_dataset=pipeline_res.canonical_dataset,
             reconstructed_dataset=pipeline_res.reconstructed_dataset,
             benchmark_engine=pipeline_res.benchmark_engine,
             findings=pipeline_res.findings,
             dq_result=pipeline_res.data_quality_result,
             description="Pre-seeded multi-sector CSE operational evidence bundle featuring National Power Dispatch Center (NPDC) Goodhart's Law case study.",
+            analysis_run=pipeline_res.analysis_run,
         )
     yield
 

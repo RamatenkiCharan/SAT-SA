@@ -40,12 +40,17 @@ export function App() {
     refreshData();
   }, []);
 
+  const [loadingDemo, setLoadingDemo] = useState<boolean>(false);
+
   const handleLoadDemo = async (type: "critical_infrastructure" | "held_out_test") => {
+    setLoadingDemo(true);
     try {
       await loadDemoDataset(type);
       await refreshData();
     } catch (err) {
       alert("Failed to load demo pack: " + String(err));
+    } finally {
+      setLoadingDemo(false);
     }
   };
 
@@ -58,6 +63,7 @@ export function App() {
         activeVersionId={activeVersionId}
         datasets={datasets}
         onLoadDemo={handleLoadDemo}
+        loadingDemo={loadingDemo}
       />
 
       {/* Main Content Area */}
@@ -123,7 +129,7 @@ export function App() {
 
       {/* Footer */}
       <footer style={{ borderTop: "1px solid var(--border-subtle)", padding: "1.25rem", textAlign: "center", fontSize: "0.75rem", color: "var(--text-muted)" }}>
-        SAT-SA (Supervisory Analytics Tool for SOC Assessment) • SIH Problem Statement 26157 • Air-Gapped NCIIPC Examiner Edition
+        SAT-SA (Supervisory Analytics Tool for SOC Assessment) • Air-Gapped NCIIPC Examiner Edition
       </footer>
     </div>
   );

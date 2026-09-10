@@ -50,7 +50,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
               <AlertTriangle size={14} /> THE SUPERVISORY REALITY CHECK
             </span>
             <span style={{ fontSize: "0.85rem", color: "var(--accent-cyan)", fontWeight: 600 }}>
-              SIH Problem Statement 26157 Core Demonstration
+              Core Supervisory Analytics Demonstration
             </span>
           </div>
           <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>

@@ -1,6 +1,6 @@
 {
   "protocol_version": "2.0.0",
-  "validation_timestamp": "2026-09-10T12:14:16.137586+00:00",
+  "validation_timestamp": "2026-09-10T20:26:37.615170+00:00",
   "ruleset_version": "V1",
   "ruleset_id": "00000000-0000-0000-0000-000000000001",
   "held_out_ratio_percentage": 33.33,
@@ -21,7 +21,7 @@
     "total_scenarios": 10,
     "scenarios": [
       {
-        "cse_id": "21aa084d-31b0-4651-acde-017fb02eba69",
+        "cse_id": "6fee3df7-60a8-44f8-9c42-3d0a144e16fd",
         "cse_name": "Northern Power Grid Co.",
         "sector": "Power & Energy",
         "scale": "large",
@@ -36,7 +36,7 @@
         "description": "Baseline healthy critical infrastructure entity with standard investigation depth."
       },
       {
-        "cse_id": "6c4057dd-2c26-4540-b651-816ac516daeb",
+        "cse_id": "f03b0252-e718-4e77-992c-ebef940630a3",
         "cse_name": "National Power Dispatch Center (NPDC)",
         "sector": "Power & Energy",
         "scale": "large",
@@ -61,7 +61,7 @@
         "description": "THE WOW MOMENT: 99.2% self-reported SLA compliance, but operational evidence shows rapid closures (avg 4m), 0 escalations on SCADA alerts, and repeated ransomware triggers."
       },
       {
-        "cse_id": "f3cff951-565a-42e3-bfe2-254bed2c743b",
+        "cse_id": "6415eaa1-05b5-4574-84e7-885b6acf675c",
         "cse_name": "Federal Reserve Core Banking",
         "sector": "Financial Services",
         "scale": "large",
@@ -76,7 +76,7 @@
         "description": "High compliance financial sector entity with robust multi-tiered escalation."
       },
       {
-        "cse_id": "4629e883-c79b-44c4-8b06-fdf3e375eb77",
+        "cse_id": "ed00c885-24ce-4099-af43-13eddc345074",
         "cse_name": "Metro Rail Transit Command",
         "sector": "Transportation",
         "scale": "medium",
@@ -95,7 +95,7 @@
         "description": "Overworked L1 analysts closing signalling alerts below peer duration."
       },
       {
-        "cse_id": "614500df-8358-413e-bdf1-780358cf0f22",
+        "cse_id": "37e9fa3b-1f07-48ee-a7c8-28f192ef5b2d",
         "cse_name": "National Telecom Core Backbone",
         "sector": "Telecommunications",
         "scale": "large",
@@ -114,7 +114,7 @@
         "description": "Core router alerts resolving without Tier-2 escalation records."
       },
       {
-        "cse_id": "65e1ff4e-c44c-4997-aa23-162e3678f1b3",
+        "cse_id": "e03e77db-e215-4579-a845-ec3f411d7db6",
         "cse_name": "State Healthcare Exchange",
         "sector": "Healthcare & Defense",
         "scale": "medium",
@@ -133,7 +133,7 @@
         "description": "Negative space: EHR Database is completely silent (0 observed vs 50 expected) despite healthy pipeline."
       },
       {
-        "cse_id": "d965a6dc-5faa-4f25-9c09-b2d9503a5a66",
+        "cse_id": "53a06971-dc68-4b99-a658-b751c8c4337c",
         "cse_name": "Coastal Water Authority",
         "sector": "Power & Energy",
         "scale": "large",
@@ -148,7 +148,7 @@
         "description": "Known data ingestion disruption: low activity correctly classified as data uncertainty, NOT an operational breach."
       },
       {
-        "cse_id": "c8cc462e-bc93-4d38-be37-d22bc32122b2",
+        "cse_id": "6acf14ec-0890-4cba-a909-f9aa9c54761d",
         "cse_name": "Interstate Oil Pipeline Corp.",
         "sector": "Power & Energy",
         "scale": "large",
@@ -167,7 +167,7 @@
         "description": "Recurrent SCADA intrusion alerts on pumping station with zero remediation actions recorded."
       },
       {
-        "cse_id": "5f323fee-9a30-4911-9655-56f389521eb3",
+        "cse_id": "6597e093-f122-4f3d-a59e-dc6556f39162",
         "cse_name": "Global Maritime Logistics",
         "sector": "Transportation",
         "scale": "large",
@@ -182,7 +182,7 @@
         "description": "High alert volume with timestamp jitter and spurious benign noise; investigations are thorough and benign."
       },
       {
-        "cse_id": "43e1ecd6-2523-49d6-af9f-6359de7c1393",
+        "cse_id": "9df26440-6f7e-4cc3-bde9-4d0584eb8119",
         "cse_name": "AeroSpace Avionics Defense",
         "sector": "Healthcare & Defense",
         "scale": "large",
@@ -317,7 +317,7 @@
     "yield_curve": [
       {
         "rank": 1,
-        "finding_id": "287f467c-8243-4a5f-8d4a-c0970c248ffc",
+        "finding_id": "24b89a30-60ea-4973-ab75-9a49c4619e25",
         "finding_type": "FAST_CLOSURE",
         "priority_score": 0.85,
         "is_true_positive": true,
@@ -327,7 +327,7 @@
       },
       {
         "rank": 2,
-        "finding_id": "19a5d450-2924-4df2-8825-f8f5d0aaa21c",
+        "finding_id": "1467f098-cd25-4671-8d12-60e216c69ddf",
         "finding_type": "ESCALATION_GAP",
         "priority_score": 0.793,
         "is_true_positive": true,
@@ -337,7 +337,7 @@
       },
       {
         "rank": 3,
-        "finding_id": "166b910f-2ec2-45a6-b59c-fa89cec719a2",
+        "finding_id": "5f344123-c1bd-459f-9d3f-b57e1789e9bc",
         "finding_type": "ESCALATION_GAP",
         "priority_score": 0.793,
         "is_true_positive": true,
@@ -347,7 +347,7 @@
       },
       {
         "rank": 4,
-        "finding_id": "182a27ba-a6fd-42ad-9461-3aca5cbb46cc",
+        "finding_id": "3540506b-0ce1-4714-ad39-35dd3726784d",
         "finding_type": "FAST_CLOSURE",
         "priority_score": 0.75,
         "is_true_positive": true,
@@ -357,7 +357,7 @@
       },
       {
         "rank": 5,
-        "finding_id": "4b520b7e-1e8d-47e6-a261-ad0d2f1c84a2",
+        "finding_id": "5780c4f7-80d9-4e4a-a1bb-271eed8243e0",
         "finding_type": "COVERAGE_GAP",
         "priority_score": 0.697,
         "is_true_positive": true,
@@ -367,7 +367,7 @@
       },
       {
         "rank": 6,
-        "finding_id": "f4fb89b5-25e9-407c-8182-6a27ea09a48b",
+        "finding_id": "26830769-2cb4-4f04-81c1-8afd177486b2",
         "finding_type": "COVERAGE_GAP",
         "priority_score": 0.697,
         "is_true_positive": true,
@@ -377,7 +377,7 @@
       },
       {
         "rank": 7,
-        "finding_id": "cd0e45f5-c572-458c-903f-1afb12f9d078",
+        "finding_id": "bf50005e-221b-4fa3-8c14-00398813602e",
         "finding_type": "COVERAGE_GAP",
         "priority_score": 0.697,
         "is_true_positive": true,
@@ -387,7 +387,7 @@
       },
       {
         "rank": 8,
-        "finding_id": "ee98060a-e861-4549-9399-0141f4cbea31",
+        "finding_id": "8709049e-b2ec-41fc-979f-ea0afbcf4de1",
         "finding_type": "REPEATED_UNRESOLVED_ALERTS",
         "priority_score": 0.67,
         "is_true_positive": true,
@@ -397,7 +397,7 @@
       },
       {
         "rank": 9,
-        "finding_id": "1fc0e3de-98e2-4c6d-995a-2aa1dabda957",
+        "finding_id": "48262cf3-d9ea-45db-a049-2bbf0e649528",
         "finding_type": "REPEATED_UNRESOLVED_ALERTS",
         "priority_score": 0.67,
         "is_true_positive": true,
@@ -407,7 +407,7 @@
       },
       {
         "rank": 10,
-        "finding_id": "41767eb8-3573-442b-8ddc-47d97173af7c",
+        "finding_id": "d77cb4af-ee8c-4cd3-846f-345c09e43740",
         "finding_type": "REPEATED_UNRESOLVED_ALERTS",
         "priority_score": 0.67,
         "is_true_positive": true,
@@ -417,7 +417,7 @@
       },
       {
         "rank": 11,
-        "finding_id": "73069efd-4b9b-4418-b0ca-23bbd2ecb88a",
+        "finding_id": "e11b8dc1-d3f9-456f-a010-0f5db545b0b1",
         "finding_type": "REPEATED_UNRESOLVED_ALERTS",
         "priority_score": 0.67,
         "is_true_positive": true,
@@ -427,7 +427,7 @@
       },
       {
         "rank": 12,
-        "finding_id": "1e915161-538c-4808-a3c8-484b59daabab",
+        "finding_id": "f2212398-6cda-473d-b45f-bf363e97ee51",
         "finding_type": "REPEATED_UNRESOLVED_ALERTS",
         "priority_score": 0.67,
         "is_true_positive": true,
@@ -437,7 +437,7 @@
       },
       {
         "rank": 13,
-        "finding_id": "5eadb053-1269-425b-8fd4-259a4c2a8b79",
+        "finding_id": "a66003d7-b01b-444d-96e2-a895352079a3",
         "finding_type": "REPEATED_UNRESOLVED_ALERTS",
         "priority_score": 0.67,
         "is_true_positive": true,
@@ -455,7 +455,7 @@
     "total_scenarios": 5,
     "scenarios": [
       {
-        "cse_id": "7cc7d26b-876f-4d54-aa0c-f5e38d98633a",
+        "cse_id": "9c158e67-994f-4d84-bbd0-e216d48cd3da",
         "cse_name": "Pacific Clean Energy Grid",
         "sector": "Power & Energy",
         "scale": "medium",
@@ -470,7 +470,7 @@
         "description": "Independent clean energy utility with novel renewable solar/BESS asset archetypes and distinct closure timing."
       },
       {
-        "cse_id": "43dfa065-931c-49b0-91b0-7688dfafb26a",
+        "cse_id": "1b773c4a-d93e-4b12-99f2-dbfa3b6de40d",
         "cse_name": "Apex Commercial Bank",
         "sector": "Financial Services",
         "scale": "large",
@@ -492,7 +492,7 @@
         "description": "Held-out banking entity: novel SWIFT ISO20022 wire assets, faster rapid closures (120-240s), and omitted escalations."
       },
       {
-        "cse_id": "3c7e2904-762b-46f7-b1d9-205ca49b37ac",
+        "cse_id": "1c3b3fb9-779e-4fc0-959f-13fe00fc4736",
         "cse_name": "Satellite Telecom Uplink Corp",
         "sector": "Telecommunications",
         "scale": "medium",
@@ -511,7 +511,7 @@
         "description": "Held-out negative space scenario: novel Ka-band Satellite Transponder telemetry is completely silent."
       },
       {
-        "cse_id": "2ba49c26-ac73-49d4-a594-0592024d739a",
+        "cse_id": "a2bd26bc-bf7d-403f-bc9c-749cad12f91b",
         "cse_name": "Regional Trauma Center Alliance",
         "sector": "Healthcare & Defense",
         "scale": "medium",
@@ -531,7 +531,7 @@
         "description": "Held-out healthcare scenario: novel DICOM/PACS medical assets, high background telemetry noise (60-80 alerts) + recurrent ransomware triggers with zero remediation."
       },
       {
-        "cse_id": "9f16d221-4a93-4a15-bea6-b07106b51a85",
+        "cse_id": "7c38dc6c-b114-44c0-9f76-bee3fc08e8fe",
         "cse_name": "Urban Metrorail System",
         "sector": "Transportation",
         "scale": "large",
@@ -667,7 +667,7 @@
     "yield_curve": [
       {
         "rank": 1,
-        "finding_id": "15c94030-ef8f-4952-a3e1-99f1547c2088",
+        "finding_id": "3d032591-ee1c-4573-b122-d5db4632f1f0",
         "finding_type": "FAST_CLOSURE",
         "priority_score": 0.85,
         "is_true_positive": true,
@@ -677,7 +677,7 @@
       },
       {
         "rank": 2,
-        "finding_id": "3a04841a-2747-479e-a7bf-10db499d97ee",
+        "finding_id": "42d40def-0c94-49b4-830c-76f0ce89697e",
         "finding_type": "ESCALATION_GAP",
         "priority_score": 0.793,
         "is_true_positive": true,
@@ -687,7 +687,7 @@
       },
       {
         "rank": 3,
-        "finding_id": "00255045-5431-47c5-923b-23d12cbae4ec",
+        "finding_id": "96d2a781-5b90-496d-8906-71c27f285b91",
         "finding_type": "COVERAGE_GAP",
         "priority_score": 0.697,
         "is_true_positive": true,
@@ -697,7 +697,7 @@
       },
       {
         "rank": 4,
-        "finding_id": "696b839e-c059-45b0-b4a3-cde758f8c3d1",
+        "finding_id": "939cd82c-b96e-4fe9-8c0e-7a8b7b8ccbc1",
         "finding_type": "COVERAGE_GAP",
         "priority_score": 0.697,
         "is_true_positive": true,
@@ -707,7 +707,7 @@
       },
       {
         "rank": 5,
-        "finding_id": "a0106df5-a466-4b92-ad24-3aa8d2897fc5",
+        "finding_id": "53ad4524-48a8-44e8-a95b-41768507be7f",
         "finding_type": "REPEATED_UNRESOLVED_ALERTS",
         "priority_score": 0.67,
         "is_true_positive": true,
@@ -717,7 +717,7 @@
       },
       {
         "rank": 6,
-        "finding_id": "7fea9a14-5190-4de3-8d86-3ec0e4288628",
+        "finding_id": "d875c358-ace1-4399-9dc6-ca02993319e4",
         "finding_type": "REPEATED_UNRESOLVED_ALERTS",
         "priority_score": 0.67,
         "is_true_positive": true,
@@ -727,7 +727,7 @@
       },
       {
         "rank": 7,
-        "finding_id": "b8ed4315-5769-4e34-a0f4-055ee9e227e7",
+        "finding_id": "c1c39106-21dc-4a71-bd8f-4a6dcb98f4a9",
         "finding_type": "REPEATED_UNRESOLVED_ALERTS",
         "priority_score": 0.67,
         "is_true_positive": true,
@@ -737,7 +737,7 @@
       },
       {
         "rank": 8,
-        "finding_id": "f5bf8963-cefc-4bbc-ab59-cd82cb9c0079",
+        "finding_id": "58e2345c-c3da-4d3c-b676-e9961bbedb89",
         "finding_type": "REPEATED_UNRESOLVED_ALERTS",
         "priority_score": 0.67,
         "is_true_positive": true,
@@ -747,7 +747,7 @@
       },
       {
         "rank": 9,
-        "finding_id": "0c9631be-f8e7-42b8-8569-8487df82ff1f",
+        "finding_id": "8c6b9aba-2d71-4751-8161-694a05b7e6b9",
         "finding_type": "REPEATED_UNRESOLVED_ALERTS",
         "priority_score": 0.67,
         "is_true_positive": true,
@@ -757,7 +757,7 @@
       },
       {
         "rank": 10,
-        "finding_id": "2477738b-3238-4e9f-bbee-74c75c4a3cc0",
+        "finding_id": "234b8137-fa90-498e-9304-3df5bb6b6df0",
         "finding_type": "REPEATED_UNRESOLVED_ALERTS",
         "priority_score": 0.67,
         "is_true_positive": true,
@@ -767,7 +767,7 @@
       },
       {
         "rank": 11,
-        "finding_id": "f0582b3e-484c-4376-b977-4b780345d6ad",
+        "finding_id": "178e228c-2d5f-47b4-993e-eb6f63ad955d",
         "finding_type": "REPEATED_UNRESOLVED_ALERTS",
         "priority_score": 0.67,
         "is_true_positive": true,
@@ -777,7 +777,7 @@
       },
       {
         "rank": 12,
-        "finding_id": "4206fc0d-280b-4e08-8b98-c730723031b7",
+        "finding_id": "9b9beba0-e1b3-4351-b249-4b10da4090ad",
         "finding_type": "REPEATED_UNRESOLVED_ALERTS",
         "priority_score": 0.67,
         "is_true_positive": true,
@@ -787,7 +787,7 @@
       },
       {
         "rank": 13,
-        "finding_id": "23621bb2-6437-458e-8a1e-6a08d6076b86",
+        "finding_id": "c7ce3aec-79a8-43c3-ab07-0a52c35265fe",
         "finding_type": "REPEATED_UNRESOLVED_ALERTS",
         "priority_score": 0.67,
         "is_true_positive": true,
@@ -797,7 +797,7 @@
       },
       {
         "rank": 14,
-        "finding_id": "3a88c4e2-5f53-433f-bc22-49f252fe8a67",
+        "finding_id": "c58d1507-525e-4187-a867-e65fb3c9df70",
         "finding_type": "REPEATED_UNRESOLVED_ALERTS",
         "priority_score": 0.67,
         "is_true_positive": true,
@@ -807,7 +807,7 @@
       },
       {
         "rank": 15,
-        "finding_id": "49286ff9-d94b-4c4c-9556-305c3ec36385",
+        "finding_id": "213ffe60-2e67-43a8-a461-413461a2d6d0",
         "finding_type": "REPEATED_UNRESOLVED_ALERTS",
         "priority_score": 0.67,
         "is_true_positive": true,
@@ -817,7 +817,7 @@
       },
       {
         "rank": 16,
-        "finding_id": "dddc67fe-b341-464b-b358-f25f04fcc828",
+        "finding_id": "603f208b-2e10-467f-8231-111927233233",
         "finding_type": "REPEATED_UNRESOLVED_ALERTS",
         "priority_score": 0.67,
         "is_true_positive": true,
@@ -827,7 +827,7 @@
       },
       {
         "rank": 17,
-        "finding_id": "d1fcf96e-1c1c-427f-ab19-8910c49b7e0d",
+        "finding_id": "ffaaceff-6096-4457-beba-82a28726be3b",
         "finding_type": "REPEATED_UNRESOLVED_ALERTS",
         "priority_score": 0.67,
         "is_true_positive": true,
@@ -837,7 +837,7 @@
       },
       {
         "rank": 18,
-        "finding_id": "a9efd3e7-f705-4c92-9cac-eab5b3b452af",
+        "finding_id": "fe8ed74e-c1bc-40d3-a6f2-abf62d89ec72",
         "finding_type": "REPEATED_UNRESOLVED_ALERTS",
         "priority_score": 0.67,
         "is_true_positive": true,
