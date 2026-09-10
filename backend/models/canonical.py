@@ -85,11 +85,13 @@ class PeerFallbackState(str, Enum):
 
 
 class FindingType(str, Enum):
-    """SRS §7.4.1 / §7.5.1 pinned P0 detector families only. Extend deliberately."""
-    FAST_CLOSURE = "FAST_CLOSURE"                # FR-030
-    ESCALATION_GAP = "ESCALATION_GAP"            # FR-032
-    REPEATED_UNRESOLVED_ALERTS = "REPEATED_UNRESOLVED_ALERTS"  # FR-033
-    COVERAGE_GAP = "COVERAGE_GAP"                # FR-041
+    """SRS §7.4.1 / §7.5.1 pinned P0 and P1 detector families."""
+    FAST_CLOSURE = "FAST_CLOSURE"                                # FR-030
+    INVESTIGATION_INSUFFICIENCY = "INVESTIGATION_INSUFFICIENCY"  # FR-031
+    ESCALATION_GAP = "ESCALATION_GAP"                            # FR-032
+    REPEATED_UNRESOLVED_ALERTS = "REPEATED_UNRESOLVED_ALERTS"    # FR-033
+    WORKFLOW_SHORTCUT = "WORKFLOW_SHORTCUT"                      # FR-034
+    COVERAGE_GAP = "COVERAGE_GAP"                                # FR-041
 
 
 class ExpectationBasis(str, Enum):
