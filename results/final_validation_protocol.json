@@ -1,0 +1,869 @@
+{
+  "protocol_version": "2.0.0",
+  "validation_timestamp": "2026-09-10T12:01:30.399884+00:00",
+  "ruleset_version": "V1",
+  "ruleset_id": "00000000-0000-0000-0000-000000000001",
+  "held_out_ratio_percentage": 33.33,
+  "mandatory_categories_verified": [
+    "normal behavior",
+    "fast closure defect",
+    "escalation gap",
+    "repeated unresolved behavior",
+    "coverage gap",
+    "noisy data",
+    "missing data",
+    "non-target anomalies"
+  ],
+  "tuning_split": {
+    "split_name": "Tuning Set",
+    "is_held_out": false,
+    "seed": 42,
+    "total_scenarios": 10,
+    "scenarios": [
+      {
+        "cse_id": "ac78f6bf-6918-4b9b-adbe-7bf0a7afcab9",
+        "cse_name": "Northern Power Grid Co.",
+        "sector": "Power & Energy",
+        "scale": "large",
+        "primary_category": "normal behavior",
+        "categories": [
+          "normal behavior"
+        ],
+        "self_reported_sla": 0.965,
+        "expected_weaknesses": [],
+        "detected_weaknesses": [],
+        "status": "CLEAN_NEGATIVE",
+        "description": "Baseline healthy critical infrastructure entity with standard investigation depth."
+      },
+      {
+        "cse_id": "90cc622c-908c-4beb-bc48-8e8175c5841a",
+        "cse_name": "National Power Dispatch Center (NPDC)",
+        "sector": "Power & Energy",
+        "scale": "large",
+        "primary_category": "fast closure defect",
+        "categories": [
+          "fast closure defect",
+          "escalation gap",
+          "repeated unresolved behavior"
+        ],
+        "self_reported_sla": 0.992,
+        "expected_weaknesses": [
+          "ESCALATION_GAP",
+          "FAST_CLOSURE",
+          "REPEATED_UNRESOLVED_ALERTS"
+        ],
+        "detected_weaknesses": [
+          "ESCALATION_GAP",
+          "FAST_CLOSURE",
+          "REPEATED_UNRESOLVED_ALERTS"
+        ],
+        "status": "PERFECT_MATCH",
+        "description": "THE WOW MOMENT: 99.2% self-reported SLA compliance, but operational evidence shows rapid closures (avg 4m), 0 escalations on SCADA alerts, and repeated ransomware triggers."
+      },
+      {
+        "cse_id": "7bc92574-6541-4af8-8793-1349b743285d",
+        "cse_name": "Federal Reserve Core Banking",
+        "sector": "Financial Services",
+        "scale": "large",
+        "primary_category": "normal behavior",
+        "categories": [
+          "normal behavior"
+        ],
+        "self_reported_sla": 0.978,
+        "expected_weaknesses": [],
+        "detected_weaknesses": [],
+        "status": "CLEAN_NEGATIVE",
+        "description": "High compliance financial sector entity with robust multi-tiered escalation."
+      },
+      {
+        "cse_id": "4ce1425b-8c26-4a99-8f59-2eaf167d3d81",
+        "cse_name": "Metro Rail Transit Command",
+        "sector": "Transportation",
+        "scale": "medium",
+        "primary_category": "fast closure defect",
+        "categories": [
+          "fast closure defect"
+        ],
+        "self_reported_sla": 0.985,
+        "expected_weaknesses": [
+          "FAST_CLOSURE"
+        ],
+        "detected_weaknesses": [
+          "FAST_CLOSURE"
+        ],
+        "status": "PERFECT_MATCH",
+        "description": "Overworked L1 analysts closing signalling alerts below peer duration."
+      },
+      {
+        "cse_id": "8c261468-6d18-4d44-9653-13073a9f287a",
+        "cse_name": "National Telecom Core Backbone",
+        "sector": "Telecommunications",
+        "scale": "large",
+        "primary_category": "escalation gap",
+        "categories": [
+          "escalation gap"
+        ],
+        "self_reported_sla": 0.94,
+        "expected_weaknesses": [
+          "ESCALATION_GAP"
+        ],
+        "detected_weaknesses": [
+          "ESCALATION_GAP"
+        ],
+        "status": "PERFECT_MATCH",
+        "description": "Core router alerts resolving without Tier-2 escalation records."
+      },
+      {
+        "cse_id": "c6f824a8-a3f2-46bc-bf1f-f969c4f48f47",
+        "cse_name": "State Healthcare Exchange",
+        "sector": "Healthcare & Defense",
+        "scale": "medium",
+        "primary_category": "coverage gap",
+        "categories": [
+          "coverage gap"
+        ],
+        "self_reported_sla": 0.95,
+        "expected_weaknesses": [
+          "COVERAGE_GAP"
+        ],
+        "detected_weaknesses": [
+          "COVERAGE_GAP"
+        ],
+        "status": "PERFECT_MATCH",
+        "description": "Negative space: EHR Database is completely silent (0 observed vs 50 expected) despite healthy pipeline."
+      },
+      {
+        "cse_id": "19cc7f4b-3f76-432d-b748-726590a5584f",
+        "cse_name": "Coastal Water Authority",
+        "sector": "Power & Energy",
+        "scale": "large",
+        "primary_category": "missing data",
+        "categories": [
+          "missing data"
+        ],
+        "self_reported_sla": 0.82,
+        "expected_weaknesses": [],
+        "detected_weaknesses": [],
+        "status": "CLEAN_NEGATIVE",
+        "description": "Known data ingestion disruption: low activity correctly classified as data uncertainty, NOT an operational breach."
+      },
+      {
+        "cse_id": "abe31cb0-c336-4480-9406-c930df5f1028",
+        "cse_name": "Interstate Oil Pipeline Corp.",
+        "sector": "Power & Energy",
+        "scale": "large",
+        "primary_category": "repeated unresolved behavior",
+        "categories": [
+          "repeated unresolved behavior"
+        ],
+        "self_reported_sla": 0.935,
+        "expected_weaknesses": [
+          "REPEATED_UNRESOLVED_ALERTS"
+        ],
+        "detected_weaknesses": [
+          "REPEATED_UNRESOLVED_ALERTS"
+        ],
+        "status": "PERFECT_MATCH",
+        "description": "Recurrent SCADA intrusion alerts on pumping station with zero remediation actions recorded."
+      },
+      {
+        "cse_id": "da7f6aa2-a0d0-45c5-8894-d123de225e9d",
+        "cse_name": "Global Maritime Logistics",
+        "sector": "Transportation",
+        "scale": "large",
+        "primary_category": "noisy data",
+        "categories": [
+          "noisy data"
+        ],
+        "self_reported_sla": 0.91,
+        "expected_weaknesses": [],
+        "detected_weaknesses": [],
+        "status": "CLEAN_NEGATIVE",
+        "description": "High alert volume with timestamp jitter and spurious benign noise; investigations are thorough and benign."
+      },
+      {
+        "cse_id": "3a3a0f69-c41b-4339-a404-813a6e5509eb",
+        "cse_name": "AeroSpace Avionics Defense",
+        "sector": "Healthcare & Defense",
+        "scale": "large",
+        "primary_category": "non-target anomalies",
+        "categories": [
+          "non-target anomalies"
+        ],
+        "self_reported_sla": 0.96,
+        "expected_weaknesses": [],
+        "detected_weaknesses": [],
+        "status": "CLEAN_NEGATIVE",
+        "description": "Operational surge during scheduled maintenance window with complete evidence; non-target statistical variance."
+      }
+    ],
+    "confusion_matrix": {
+      "tp": 7,
+      "fp": 0,
+      "tn": 33,
+      "fn": 0,
+      "total_positives": 7,
+      "total_negatives": 33,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "false_positive_rate": 0.0,
+      "top_k_recall": {
+        "recall_at_1": 0.1429,
+        "recall_at_3": 0.4286,
+        "recall_at_5": 0.7143,
+        "recall_at_10": 0.8571,
+        "recall_full_queue": 1.0
+      }
+    },
+    "category_breakdown": [
+      {
+        "category_name": "normal behavior",
+        "scenario_count": 2,
+        "tp": 0,
+        "fp": 0,
+        "tn": 8,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "status": "VERIFIED_NO_FALSE_POSITIVES"
+      },
+      {
+        "category_name": "fast closure defect",
+        "scenario_count": 2,
+        "tp": 4,
+        "fp": 0,
+        "tn": 4,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "status": "VERIFIED_DEFECT_DISCOVERY"
+      },
+      {
+        "category_name": "escalation gap",
+        "scenario_count": 2,
+        "tp": 4,
+        "fp": 0,
+        "tn": 4,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "status": "VERIFIED_DEFECT_DISCOVERY"
+      },
+      {
+        "category_name": "repeated unresolved behavior",
+        "scenario_count": 2,
+        "tp": 4,
+        "fp": 0,
+        "tn": 4,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "status": "VERIFIED_DEFECT_DISCOVERY"
+      },
+      {
+        "category_name": "coverage gap",
+        "scenario_count": 1,
+        "tp": 1,
+        "fp": 0,
+        "tn": 3,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "status": "VERIFIED_DEFECT_DISCOVERY"
+      },
+      {
+        "category_name": "noisy data",
+        "scenario_count": 1,
+        "tp": 0,
+        "fp": 0,
+        "tn": 4,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "status": "VERIFIED_NO_FALSE_POSITIVES"
+      },
+      {
+        "category_name": "missing data",
+        "scenario_count": 1,
+        "tp": 0,
+        "fp": 0,
+        "tn": 4,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "status": "VERIFIED_NO_FALSE_POSITIVES"
+      },
+      {
+        "category_name": "non-target anomalies",
+        "scenario_count": 1,
+        "tp": 0,
+        "fp": 0,
+        "tn": 4,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "status": "VERIFIED_NO_FALSE_POSITIVES"
+      }
+    ],
+    "yield_curve": [
+      {
+        "rank": 1,
+        "finding_id": "2f58183f-6620-4a58-bbc7-662e206793eb",
+        "finding_type": "FAST_CLOSURE",
+        "priority_score": 0.85,
+        "is_true_positive": true,
+        "cumulative_tp": 1,
+        "total_true_weaknesses": 7,
+        "yield_percentage": 14.3
+      },
+      {
+        "rank": 2,
+        "finding_id": "da6424dc-1f62-492a-8ce9-b5106b4e44aa",
+        "finding_type": "ESCALATION_GAP",
+        "priority_score": 0.793,
+        "is_true_positive": true,
+        "cumulative_tp": 2,
+        "total_true_weaknesses": 7,
+        "yield_percentage": 28.6
+      },
+      {
+        "rank": 3,
+        "finding_id": "0287b018-2cde-4ca7-a5ef-589190f15612",
+        "finding_type": "ESCALATION_GAP",
+        "priority_score": 0.793,
+        "is_true_positive": true,
+        "cumulative_tp": 3,
+        "total_true_weaknesses": 7,
+        "yield_percentage": 42.9
+      },
+      {
+        "rank": 4,
+        "finding_id": "e472a2f3-1e25-4a94-897d-d7329a2d351f",
+        "finding_type": "FAST_CLOSURE",
+        "priority_score": 0.75,
+        "is_true_positive": true,
+        "cumulative_tp": 4,
+        "total_true_weaknesses": 7,
+        "yield_percentage": 57.1
+      },
+      {
+        "rank": 5,
+        "finding_id": "af85d309-b0fe-407b-ac9d-17a7dfb4da1c",
+        "finding_type": "COVERAGE_GAP",
+        "priority_score": 0.697,
+        "is_true_positive": true,
+        "cumulative_tp": 5,
+        "total_true_weaknesses": 7,
+        "yield_percentage": 71.4
+      },
+      {
+        "rank": 6,
+        "finding_id": "dca98cda-8e26-4907-9780-5b35e6300068",
+        "finding_type": "COVERAGE_GAP",
+        "priority_score": 0.697,
+        "is_true_positive": true,
+        "cumulative_tp": 5,
+        "total_true_weaknesses": 7,
+        "yield_percentage": 71.4
+      },
+      {
+        "rank": 7,
+        "finding_id": "8ac0a36c-f9ca-4b34-9de8-b15e02c0e775",
+        "finding_type": "COVERAGE_GAP",
+        "priority_score": 0.697,
+        "is_true_positive": true,
+        "cumulative_tp": 5,
+        "total_true_weaknesses": 7,
+        "yield_percentage": 71.4
+      },
+      {
+        "rank": 8,
+        "finding_id": "97d9282a-30cf-421e-ba78-34684dab6df0",
+        "finding_type": "REPEATED_UNRESOLVED_ALERTS",
+        "priority_score": 0.67,
+        "is_true_positive": true,
+        "cumulative_tp": 6,
+        "total_true_weaknesses": 7,
+        "yield_percentage": 85.7
+      },
+      {
+        "rank": 9,
+        "finding_id": "b57b3cfa-2f16-4d77-ad9f-34d8a0b4964f",
+        "finding_type": "REPEATED_UNRESOLVED_ALERTS",
+        "priority_score": 0.67,
+        "is_true_positive": true,
+        "cumulative_tp": 6,
+        "total_true_weaknesses": 7,
+        "yield_percentage": 85.7
+      },
+      {
+        "rank": 10,
+        "finding_id": "9386a69e-6a56-4521-93a5-a82288dd0942",
+        "finding_type": "REPEATED_UNRESOLVED_ALERTS",
+        "priority_score": 0.67,
+        "is_true_positive": true,
+        "cumulative_tp": 6,
+        "total_true_weaknesses": 7,
+        "yield_percentage": 85.7
+      },
+      {
+        "rank": 11,
+        "finding_id": "13ecd299-4173-4572-ac69-9b6c98b2afcc",
+        "finding_type": "REPEATED_UNRESOLVED_ALERTS",
+        "priority_score": 0.67,
+        "is_true_positive": true,
+        "cumulative_tp": 6,
+        "total_true_weaknesses": 7,
+        "yield_percentage": 85.7
+      },
+      {
+        "rank": 12,
+        "finding_id": "5ef090b8-6913-4a9b-a009-c4d582263a3b",
+        "finding_type": "REPEATED_UNRESOLVED_ALERTS",
+        "priority_score": 0.67,
+        "is_true_positive": true,
+        "cumulative_tp": 6,
+        "total_true_weaknesses": 7,
+        "yield_percentage": 85.7
+      },
+      {
+        "rank": 13,
+        "finding_id": "8b667d9b-651c-4fb6-a30f-ab20818e6c84",
+        "finding_type": "REPEATED_UNRESOLVED_ALERTS",
+        "priority_score": 0.67,
+        "is_true_positive": true,
+        "cumulative_tp": 7,
+        "total_true_weaknesses": 7,
+        "yield_percentage": 100.0
+      }
+    ],
+    "yield_summary": "7 of 7 true supervisory weaknesses captured in top 13 prioritized cases (Precision: 100.0%, FPR: 0.0%)."
+  },
+  "held_out_split": {
+    "split_name": "Held-Out Set",
+    "is_held_out": true,
+    "seed": 101,
+    "total_scenarios": 5,
+    "scenarios": [
+      {
+        "cse_id": "704612c8-82e8-4a55-8c8c-a81b1f52d3a0",
+        "cse_name": "Pacific Clean Energy Grid",
+        "sector": "Power & Energy",
+        "scale": "medium",
+        "primary_category": "normal behavior",
+        "categories": [
+          "normal behavior"
+        ],
+        "self_reported_sla": 0.97,
+        "expected_weaknesses": [],
+        "detected_weaknesses": [],
+        "status": "CLEAN_NEGATIVE",
+        "description": "Independent clean energy utility with novel renewable solar/BESS asset archetypes and distinct closure timing."
+      },
+      {
+        "cse_id": "0c013724-3bbc-4769-8fc6-d2dbdc93a1ce",
+        "cse_name": "Apex Commercial Bank",
+        "sector": "Financial Services",
+        "scale": "large",
+        "primary_category": "fast closure defect",
+        "categories": [
+          "fast closure defect",
+          "escalation gap"
+        ],
+        "self_reported_sla": 0.99,
+        "expected_weaknesses": [
+          "ESCALATION_GAP",
+          "FAST_CLOSURE"
+        ],
+        "detected_weaknesses": [
+          "ESCALATION_GAP",
+          "FAST_CLOSURE"
+        ],
+        "status": "PERFECT_MATCH",
+        "description": "Held-out banking entity: novel SWIFT ISO20022 wire assets, faster rapid closures (120-240s), and omitted escalations."
+      },
+      {
+        "cse_id": "4bdcd55c-8535-40a9-a875-58f7047772c5",
+        "cse_name": "Satellite Telecom Uplink Corp",
+        "sector": "Telecommunications",
+        "scale": "medium",
+        "primary_category": "coverage gap",
+        "categories": [
+          "coverage gap"
+        ],
+        "self_reported_sla": 0.955,
+        "expected_weaknesses": [
+          "COVERAGE_GAP"
+        ],
+        "detected_weaknesses": [
+          "COVERAGE_GAP"
+        ],
+        "status": "PERFECT_MATCH",
+        "description": "Held-out negative space scenario: novel Ka-band Satellite Transponder telemetry is completely silent."
+      },
+      {
+        "cse_id": "f2aef103-e898-4308-9233-7be4c4e63267",
+        "cse_name": "Regional Trauma Center Alliance",
+        "sector": "Healthcare & Defense",
+        "scale": "medium",
+        "primary_category": "repeated unresolved behavior",
+        "categories": [
+          "repeated unresolved behavior",
+          "noisy data"
+        ],
+        "self_reported_sla": 0.925,
+        "expected_weaknesses": [
+          "REPEATED_UNRESOLVED_ALERTS"
+        ],
+        "detected_weaknesses": [
+          "REPEATED_UNRESOLVED_ALERTS"
+        ],
+        "status": "PERFECT_MATCH",
+        "description": "Held-out healthcare scenario: novel DICOM/PACS medical assets, high background telemetry noise (60-80 alerts) + recurrent ransomware triggers with zero remediation."
+      },
+      {
+        "cse_id": "73353a7b-5492-4d4e-a491-3b0827ece60b",
+        "cse_name": "Urban Metrorail System",
+        "sector": "Transportation",
+        "scale": "large",
+        "primary_category": "missing data",
+        "categories": [
+          "missing data",
+          "non-target anomalies"
+        ],
+        "self_reported_sla": 0.81,
+        "expected_weaknesses": [],
+        "detected_weaknesses": [],
+        "status": "CLEAN_NEGATIVE",
+        "description": "Held-out telemetry disruption (very low alert count, low DQ) and track calibration maintenance; correctly handled without false positives."
+      }
+    ],
+    "confusion_matrix": {
+      "tp": 4,
+      "fp": 0,
+      "tn": 16,
+      "fn": 0,
+      "total_positives": 4,
+      "total_negatives": 16,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "false_positive_rate": 0.0,
+      "top_k_recall": {
+        "recall_at_1": 0.25,
+        "recall_at_3": 0.75,
+        "recall_at_5": 1.0,
+        "recall_at_10": 1.0,
+        "recall_full_queue": 1.0
+      }
+    },
+    "category_breakdown": [
+      {
+        "category_name": "normal behavior",
+        "scenario_count": 1,
+        "tp": 0,
+        "fp": 0,
+        "tn": 4,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "status": "VERIFIED_NO_FALSE_POSITIVES"
+      },
+      {
+        "category_name": "fast closure defect",
+        "scenario_count": 1,
+        "tp": 2,
+        "fp": 0,
+        "tn": 2,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "status": "VERIFIED_DEFECT_DISCOVERY"
+      },
+      {
+        "category_name": "escalation gap",
+        "scenario_count": 1,
+        "tp": 2,
+        "fp": 0,
+        "tn": 2,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "status": "VERIFIED_DEFECT_DISCOVERY"
+      },
+      {
+        "category_name": "repeated unresolved behavior",
+        "scenario_count": 1,
+        "tp": 1,
+        "fp": 0,
+        "tn": 3,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "status": "VERIFIED_DEFECT_DISCOVERY"
+      },
+      {
+        "category_name": "coverage gap",
+        "scenario_count": 1,
+        "tp": 1,
+        "fp": 0,
+        "tn": 3,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "status": "VERIFIED_DEFECT_DISCOVERY"
+      },
+      {
+        "category_name": "noisy data",
+        "scenario_count": 1,
+        "tp": 1,
+        "fp": 0,
+        "tn": 3,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "status": "VERIFIED_DEFECT_DISCOVERY"
+      },
+      {
+        "category_name": "missing data",
+        "scenario_count": 1,
+        "tp": 0,
+        "fp": 0,
+        "tn": 4,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "status": "VERIFIED_NO_FALSE_POSITIVES"
+      },
+      {
+        "category_name": "non-target anomalies",
+        "scenario_count": 1,
+        "tp": 0,
+        "fp": 0,
+        "tn": 4,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "status": "VERIFIED_NO_FALSE_POSITIVES"
+      }
+    ],
+    "yield_curve": [
+      {
+        "rank": 1,
+        "finding_id": "8bf54ee2-6ebf-4521-aab9-eeb7be419d95",
+        "finding_type": "FAST_CLOSURE",
+        "priority_score": 0.85,
+        "is_true_positive": true,
+        "cumulative_tp": 1,
+        "total_true_weaknesses": 4,
+        "yield_percentage": 25.0
+      },
+      {
+        "rank": 2,
+        "finding_id": "fe0277f7-3719-49ea-982d-aa10e02634e5",
+        "finding_type": "ESCALATION_GAP",
+        "priority_score": 0.793,
+        "is_true_positive": true,
+        "cumulative_tp": 2,
+        "total_true_weaknesses": 4,
+        "yield_percentage": 50.0
+      },
+      {
+        "rank": 3,
+        "finding_id": "4af7df30-30bf-4f15-91a8-6e1d749a150b",
+        "finding_type": "COVERAGE_GAP",
+        "priority_score": 0.697,
+        "is_true_positive": true,
+        "cumulative_tp": 3,
+        "total_true_weaknesses": 4,
+        "yield_percentage": 75.0
+      },
+      {
+        "rank": 4,
+        "finding_id": "c893b697-71b7-4c36-998d-38402707c013",
+        "finding_type": "COVERAGE_GAP",
+        "priority_score": 0.697,
+        "is_true_positive": true,
+        "cumulative_tp": 3,
+        "total_true_weaknesses": 4,
+        "yield_percentage": 75.0
+      },
+      {
+        "rank": 5,
+        "finding_id": "4a5c7d1a-aa5c-4c90-8cd8-0aa5f71805bb",
+        "finding_type": "REPEATED_UNRESOLVED_ALERTS",
+        "priority_score": 0.67,
+        "is_true_positive": true,
+        "cumulative_tp": 4,
+        "total_true_weaknesses": 4,
+        "yield_percentage": 100.0
+      },
+      {
+        "rank": 6,
+        "finding_id": "4e726474-0574-4ed7-b114-75c9beccbc53",
+        "finding_type": "REPEATED_UNRESOLVED_ALERTS",
+        "priority_score": 0.67,
+        "is_true_positive": true,
+        "cumulative_tp": 4,
+        "total_true_weaknesses": 4,
+        "yield_percentage": 100.0
+      },
+      {
+        "rank": 7,
+        "finding_id": "6c1cd7ce-1b6d-4876-a2f6-af9c03a32227",
+        "finding_type": "REPEATED_UNRESOLVED_ALERTS",
+        "priority_score": 0.67,
+        "is_true_positive": true,
+        "cumulative_tp": 4,
+        "total_true_weaknesses": 4,
+        "yield_percentage": 100.0
+      },
+      {
+        "rank": 8,
+        "finding_id": "43f9ccb2-08f5-47ae-b79a-a618bf36e927",
+        "finding_type": "REPEATED_UNRESOLVED_ALERTS",
+        "priority_score": 0.67,
+        "is_true_positive": true,
+        "cumulative_tp": 4,
+        "total_true_weaknesses": 4,
+        "yield_percentage": 100.0
+      },
+      {
+        "rank": 9,
+        "finding_id": "d514909d-d6e0-46ee-a450-e1e410de3513",
+        "finding_type": "REPEATED_UNRESOLVED_ALERTS",
+        "priority_score": 0.67,
+        "is_true_positive": true,
+        "cumulative_tp": 4,
+        "total_true_weaknesses": 4,
+        "yield_percentage": 100.0
+      },
+      {
+        "rank": 10,
+        "finding_id": "cae0e58f-8883-4072-80b3-88e31936704a",
+        "finding_type": "REPEATED_UNRESOLVED_ALERTS",
+        "priority_score": 0.67,
+        "is_true_positive": true,
+        "cumulative_tp": 4,
+        "total_true_weaknesses": 4,
+        "yield_percentage": 100.0
+      },
+      {
+        "rank": 11,
+        "finding_id": "254d5458-53a5-4ffe-aa7a-4b271d9a8026",
+        "finding_type": "REPEATED_UNRESOLVED_ALERTS",
+        "priority_score": 0.67,
+        "is_true_positive": true,
+        "cumulative_tp": 4,
+        "total_true_weaknesses": 4,
+        "yield_percentage": 100.0
+      },
+      {
+        "rank": 12,
+        "finding_id": "13e0af3b-eeef-4f29-89ae-620416d97a06",
+        "finding_type": "REPEATED_UNRESOLVED_ALERTS",
+        "priority_score": 0.67,
+        "is_true_positive": true,
+        "cumulative_tp": 4,
+        "total_true_weaknesses": 4,
+        "yield_percentage": 100.0
+      },
+      {
+        "rank": 13,
+        "finding_id": "906671f6-827d-4ad5-b3fa-e584878edd2d",
+        "finding_type": "REPEATED_UNRESOLVED_ALERTS",
+        "priority_score": 0.67,
+        "is_true_positive": true,
+        "cumulative_tp": 4,
+        "total_true_weaknesses": 4,
+        "yield_percentage": 100.0
+      },
+      {
+        "rank": 14,
+        "finding_id": "c7cc9166-fe3d-4009-b62c-10dac02c57e2",
+        "finding_type": "REPEATED_UNRESOLVED_ALERTS",
+        "priority_score": 0.67,
+        "is_true_positive": true,
+        "cumulative_tp": 4,
+        "total_true_weaknesses": 4,
+        "yield_percentage": 100.0
+      },
+      {
+        "rank": 15,
+        "finding_id": "1d0198ff-5123-4db2-94f2-7491d4e9cf07",
+        "finding_type": "REPEATED_UNRESOLVED_ALERTS",
+        "priority_score": 0.67,
+        "is_true_positive": true,
+        "cumulative_tp": 4,
+        "total_true_weaknesses": 4,
+        "yield_percentage": 100.0
+      },
+      {
+        "rank": 16,
+        "finding_id": "292269a9-8eb0-40aa-97e2-16ca75f7c5a3",
+        "finding_type": "REPEATED_UNRESOLVED_ALERTS",
+        "priority_score": 0.67,
+        "is_true_positive": true,
+        "cumulative_tp": 4,
+        "total_true_weaknesses": 4,
+        "yield_percentage": 100.0
+      },
+      {
+        "rank": 17,
+        "finding_id": "d009a000-13e5-4545-ba81-09b2624d0e55",
+        "finding_type": "REPEATED_UNRESOLVED_ALERTS",
+        "priority_score": 0.67,
+        "is_true_positive": true,
+        "cumulative_tp": 4,
+        "total_true_weaknesses": 4,
+        "yield_percentage": 100.0
+      },
+      {
+        "rank": 18,
+        "finding_id": "7d2698d4-273d-4cc9-9d38-63ebffba075d",
+        "finding_type": "REPEATED_UNRESOLVED_ALERTS",
+        "priority_score": 0.67,
+        "is_true_positive": true,
+        "cumulative_tp": 4,
+        "total_true_weaknesses": 4,
+        "yield_percentage": 100.0
+      }
+    ],
+    "yield_summary": "4 of 4 true supervisory weaknesses captured in top 18 prioritized cases (Precision: 100.0%, FPR: 0.0%)."
+  },
+  "generalization_delta": {
+    "held_out_ratio_percentage": 33.33,
+    "meets_min_20pct_held_out_requirement": true,
+    "tuning_recall": 1.0,
+    "held_out_recall": 1.0,
+    "recall_delta": 0.0,
+    "tuning_precision": 1.0,
+    "held_out_precision": 1.0,
+    "precision_delta": 0.0,
+    "tuning_f1": 1.0,
+    "held_out_f1": 1.0,
+    "f1_delta": 0.0,
+    "tuning_fpr": 0.0,
+    "held_out_fpr": 0.0,
+    "fpr_delta": 0.0,
+    "generalization_demonstrated": true
+  },
+  "configuration_path": "results/final_validation_protocol.json"
+}

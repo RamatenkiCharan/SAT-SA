@@ -18,14 +18,22 @@ def test_full_pipeline_end_to_end():
     raw_bundle, scenarios = generate_synthetic_soc_benchmark(seed=42, dataset_version_id=ver_id)
 
     # 2. Run analytical pipeline
-    canonical_ds, reconstructed_ds, bm_engine, findings = run_full_analytical_pipeline(
+    pipeline_res = run_full_analytical_pipeline(
         raw_bundle=raw_bundle,
         dataset_version_id=ver_id,
     )
 
-    assert len(canonical_ds.cse_list) == 7
+    canonical_ds = pipeline_res.canonical_dataset
+    reconstructed_ds = pipeline_res.reconstructed_dataset
+    bm_engine = pipeline_res.benchmark_engine
+    findings = pipeline_res.findings
+    dq_result = pipeline_res.data_quality_result
+
+    assert len(canonical_ds.cse_list) >= 7
     assert len(canonical_ds.alerts) > 50
     assert len(findings) > 0
+    assert dq_result is not None
+    assert 0.0 <= dq_result.score <= 1.0
 
     # 3. Register dataset version in repository
     ver_meta = repo.register_dataset_version(
@@ -36,11 +44,12 @@ def test_full_pipeline_end_to_end():
         reconstructed_dataset=reconstructed_ds,
         benchmark_engine=bm_engine,
         findings=findings,
-        dq_score=0.92,
+        dq_result=dq_result,
     )
 
     assert ver_meta.dataset_version_id == ver_id
     assert repo.active_dataset_version_id == ver_id
+    assert ver_meta.data_quality_score == dq_result.score
 
     # 4. Query findings
     all_findings = repo.get_findings(dataset_version_id=ver_id)

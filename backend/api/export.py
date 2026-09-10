@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from analytics.explainability.templates import generate_finding_explanation
 from backend.repositories.in_memory_repo import SATRepository, get_repository
+from backend.security.auth import UserContext, require_supervisor
 
 router = APIRouter(prefix="/api/export", tags=["export"])
 
@@ -20,6 +21,7 @@ router = APIRouter(prefix="/api/export", tags=["export"])
 def export_supervisory_report(
     dataset_version_id: Optional[UUID] = None,
     repo: SATRepository = Depends(get_repository),
+    current_user: UserContext = Depends(require_supervisor),
 ):
     ver_id = dataset_version_id or repo.active_dataset_version_id
     if not ver_id:

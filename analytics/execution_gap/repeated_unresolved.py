@@ -15,6 +15,7 @@ from uuid import UUID
 
 from analytics.workflow.workflow_reconstruction import ReconstructedDataset, ReconstructedWorkflow
 from backend.models.canonical import Asset, EvidenceRef
+from backend.models.ruleset import RepeatedUnresolvedConfig
 
 
 @dataclass
@@ -30,9 +31,19 @@ class RepeatedUnresolvedSignal:
 
 
 class RepeatedUnresolvedDetector:
-    def __init__(self, min_occurrences: int = 3, window_days: int = 30):
-        self.min_occurrences = min_occurrences
-        self.window_days = window_days
+    def __init__(
+        self,
+        min_occurrences: int = 3,
+        window_days: int = 30,
+        config: RepeatedUnresolvedConfig | None = None,
+    ):
+        if config is not None:
+            self.min_occurrences = config.min_occurrences
+            self.window_days = config.window_days
+        else:
+            self.min_occurrences = min_occurrences
+            self.window_days = window_days
+
 
     def detect(self, dataset: ReconstructedDataset) -> list[RepeatedUnresolvedSignal]:
         signals: list[RepeatedUnresolvedSignal] = []

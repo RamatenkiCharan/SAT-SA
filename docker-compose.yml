@@ -18,13 +18,19 @@ services:
       - satsa_pgdata:/var/lib/postgresql/data
       - ./database/migrations:/docker-entrypoint-initdb.d/migrations
       - ./database/seed:/docker-entrypoint-initdb.d/seed
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U satsa -d satsa"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   backend:
     build:
       context: .
       dockerfile: Dockerfile
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
       DATABASE_URL: postgresql://satsa:satsa_dev_only_change_me@db:5432/satsa
     ports:

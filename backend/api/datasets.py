@@ -4,9 +4,11 @@ Handles file ingestion, benchmark scenario generation, versioning, and dataset s
 """
 from __future__ import annotations
 
+import csv
+import io
 import json
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
@@ -14,7 +16,8 @@ from pydantic import BaseModel
 
 from analytics.synthetic_generator import generate_synthetic_soc_benchmark, run_full_analytical_pipeline
 from backend.repositories.in_memory_repo import SATRepository, get_repository
-from backend.security.auth import UserContext, get_current_user
+from backend.security.auth import UserContext, require_analyst, require_supervisor
+from backend.services.ingestion import IngestionValidationError, ingest_file_stream
 
 router = APIRouter(prefix="/api/datasets", tags=["datasets"])
 
@@ -29,7 +32,10 @@ class SwitchVersionRequest(BaseModel):
 
 
 @router.get("")
-def list_datasets(repo: SATRepository = Depends(get_repository)):
+def list_datasets(
+    repo: SATRepository = Depends(get_repository),
+    user: UserContext = Depends(require_analyst),
+):
     return {
         "active_version_id": str(repo.active_dataset_version_id) if repo.active_dataset_version_id else None,
         "datasets": repo.list_datasets(),
@@ -40,7 +46,7 @@ def list_datasets(repo: SATRepository = Depends(get_repository)):
 def load_demo_dataset(
     req: LoadDemoRequest,
     repo: SATRepository = Depends(get_repository),
-    user: UserContext = Depends(get_current_user),
+    user: UserContext = Depends(require_supervisor),
 ):
     is_held_out = req.scenario_type == "held_out_test"
     dataset_id = uuid4()
@@ -55,7 +61,7 @@ def load_demo_dataset(
         is_held_out=is_held_out,
     )
 
-    canonical_ds, reconstructed_ds, bm_engine, findings = run_full_analytical_pipeline(
+    pipeline_res = run_full_analytical_pipeline(
         raw_bundle=raw_bundle,
         dataset_version_id=version_id,
     )
@@ -64,22 +70,33 @@ def load_demo_dataset(
         dataset_id=dataset_id,
         dataset_name=ds_name,
         source_file_ref="synthetic://sih-problem-26157-benchmark",
-        canonical_dataset=canonical_ds,
-        reconstructed_dataset=reconstructed_ds,
-        benchmark_engine=bm_engine,
-        findings=findings,
-        dq_score=0.92,
+        canonical_dataset=pipeline_res.canonical_dataset,
+        reconstructed_dataset=pipeline_res.reconstructed_dataset,
+        benchmark_engine=pipeline_res.benchmark_engine,
+        findings=pipeline_res.findings,
+        dq_result=pipeline_res.data_quality_result,
         description="Comprehensive multi-CSE dataset containing healthy baseline entities, Goodhart's Law execution gaps, and negative-space coverage monitoring anomalies.",
+        analysis_run=pipeline_res.analysis_run,
     )
 
+    dq = pipeline_res.data_quality_result
     return {
         "status": "success",
         "dataset_id": str(dataset_id),
         "dataset_version_id": str(version_id),
         "dataset_name": ds_name,
         "row_count": ver_meta.row_count,
-        "cse_count": len(canonical_ds.cse_list),
-        "findings_generated": len(findings),
+        "cse_count": len(pipeline_res.canonical_dataset.cse_list),
+        "findings_generated": len(pipeline_res.findings),
+        "data_quality_score": dq.score,
+        "data_quality_breakdown": {
+            "overall_score": round(dq.score * 100, 1),
+            "completeness": round(dq.components.completeness_ratio * 100, 1),
+            "consistency": round(dq.components.consistency_ratio * 100, 1),
+            "coverage": round(dq.components.coverage_ratio * 100, 1),
+            "sample_sufficiency": round(dq.components.sample_sufficiency_ratio * 100, 1),
+            "warnings": dq.warnings,
+        },
     }
 
 
@@ -87,61 +104,33 @@ def load_demo_dataset(
 async def upload_dataset_file(
     file: UploadFile,
     repo: SATRepository = Depends(get_repository),
-    user: UserContext = Depends(get_current_user),
+    user: UserContext = Depends(require_supervisor),
 ):
     contents = await file.read()
     filename = file.filename or "upload.json"
-    
+
     try:
-        if filename.endswith(".json"):
-            raw_data = json.loads(contents.decode("utf-8"))
-            if isinstance(raw_data, list):
-                raw_bundle = {"alerts": raw_data}
-            elif isinstance(raw_data, dict):
-                raw_bundle = raw_data
-            else:
-                raise ValueError("JSON must be an array or object containing canonical entity lists.")
-        else:
-            # Fallback quick CSV wrapper
-            raw_bundle = {"alerts": []}
+        ingest_res = ingest_file_stream(
+            contents=contents,
+            filename=filename,
+            repo=repo,
+        )
+    except IngestionValidationError as e:
+        raise HTTPException(status_code=400, detail=f"Validation error: {str(e)}")
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to parse uploaded file: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Failed to process uploaded file: {str(e)}")
 
-    dataset_id = uuid4()
-    version_id = uuid4()
-
-    canonical_ds, reconstructed_ds, bm_engine, findings = run_full_analytical_pipeline(
-        raw_bundle=raw_bundle,
-        dataset_version_id=version_id,
-    )
-
-    ver_meta = repo.register_dataset_version(
-        dataset_id=dataset_id,
-        dataset_name=f"Upload: {filename}",
-        source_file_ref=filename,
-        canonical_dataset=canonical_ds,
-        reconstructed_dataset=reconstructed_ds,
-        benchmark_engine=bm_engine,
-        findings=findings,
-        dq_score=0.88,
-        description=f"User-submitted SOC operational evidence package ({filename})",
-    )
-
-    return {
-        "status": "success",
-        "dataset_id": str(dataset_id),
-        "dataset_version_id": str(version_id),
-        "row_count": ver_meta.row_count,
-        "findings_generated": len(findings),
-    }
+    return ingest_res.to_dict()
 
 
 @router.post("/switch-version")
 def switch_active_version(
     req: SwitchVersionRequest,
     repo: SATRepository = Depends(get_repository),
+    user: UserContext = Depends(require_supervisor),
 ):
     if req.dataset_version_id not in repo.dataset_versions:
         raise HTTPException(status_code=404, detail="Dataset version not found.")
     repo.active_dataset_version_id = req.dataset_version_id
     return {"status": "success", "active_version_id": str(req.dataset_version_id)}
+

@@ -8,10 +8,10 @@ VALUES
 (
     'data_quality_score', 'V1',
     '{
-        "completeness_weight": 0.35,
+        "completeness_weight": 0.30,
         "consistency_weight": 0.25,
         "coverage_weight": 0.25,
-        "sample_sufficiency_weight": 0.15,
+        "sample_sufficiency_weight": 0.20,
         "minimum_sample_size_default": 30
     }'::jsonb,
     'SAT-SA team', 'Pinned per SRS v2.0 §7.2.1 - replaces prior unspecified 92% figure.',

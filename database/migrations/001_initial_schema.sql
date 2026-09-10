@@ -31,6 +31,7 @@ CREATE TABLE users (
     username      TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
     role_id       UUID NOT NULL REFERENCES roles(role_id),
+    full_name     TEXT,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
     is_active     BOOLEAN NOT NULL DEFAULT true
 );
@@ -43,6 +44,7 @@ CREATE TABLE datasets (
     dataset_id    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     cse_id        UUID,  -- FK added after cse table exists (below)
     name          TEXT NOT NULL,
+    description   TEXT,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
     created_by    UUID REFERENCES users(user_id)
 );
@@ -55,6 +57,15 @@ CREATE TABLE dataset_versions (
     import_time          TIMESTAMPTZ NOT NULL DEFAULT now(),
     transformation_version TEXT NOT NULL,
     schema_version       TEXT NOT NULL,
+    row_count            INTEGER NOT NULL DEFAULT 0,
+    data_quality_score   NUMERIC,
+    data_quality_components JSONB,
+    data_quality_warnings JSONB,
+    file_format          TEXT,
+    sha256_hash          TEXT,
+    accepted_rows        INTEGER NOT NULL DEFAULT 0,
+    rejected_rows        INTEGER NOT NULL DEFAULT 0,
+    rejection_reasons    JSONB,
     is_immutable          BOOLEAN NOT NULL DEFAULT true,
     UNIQUE (dataset_id, version_number)
 );
@@ -230,13 +241,22 @@ CREATE TABLE model_versions (
 
 CREATE TABLE analysis_runs (
     analysis_run_id   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    dataset_id        UUID REFERENCES datasets(dataset_id),
     dataset_version_id UUID NOT NULL REFERENCES dataset_versions(dataset_version_id),
-    ruleset_id         UUID REFERENCES rulesets(ruleset_id),
-    model_version_id   UUID REFERENCES model_versions(model_version_id),
-    started_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
-    finished_at        TIMESTAMPTZ,
-    status             TEXT NOT NULL DEFAULT 'RUNNING'  -- RUNNING | COMPLETED | FAILED
+    schema_version    TEXT NOT NULL DEFAULT '2.0.0',
+    ruleset_id        UUID REFERENCES rulesets(ruleset_id),
+    ruleset_version   TEXT NOT NULL DEFAULT 'V1',
+    detector_config   JSONB,
+    app_version       TEXT NOT NULL DEFAULT '1.0.0',
+    git_commit        TEXT,
+    model_version_id  UUID REFERENCES model_versions(model_version_id),
+    started_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+    finished_at       TIMESTAMPTZ,
+    status            TEXT NOT NULL DEFAULT 'COMPLETED',  -- RUNNING | COMPLETED | FAILED
+    error_message     TEXT,
+    findings_count    INTEGER NOT NULL DEFAULT 0
 );
+
 
 CREATE TABLE analytical_features (
     feature_id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -268,7 +288,9 @@ CREATE TABLE findings (
     temporal_context        TEXT,
     analytical_method       TEXT NOT NULL,
     ruleset_id              UUID REFERENCES rulesets(ruleset_id),
+    ruleset_version         TEXT,
     model_version_id        UUID REFERENCES model_versions(model_version_id),
+    model_version           TEXT,
     dataset_version_id      UUID NOT NULL REFERENCES dataset_versions(dataset_version_id),
     analysis_run_id         UUID NOT NULL REFERENCES analysis_runs(analysis_run_id),
     review_status           TEXT,   -- CONFIRMED | FALSE_POSITIVE | NEEDS_INVESTIGATION | INSUFFICIENT_EVIDENCE
@@ -300,7 +322,8 @@ CREATE TABLE review_decisions (
     finding_id          UUID NOT NULL REFERENCES findings(finding_id),
     decision             TEXT NOT NULL CHECK (decision IN
                             ('CONFIRMED','FALSE_POSITIVE','NEEDS_INVESTIGATION','INSUFFICIENT_EVIDENCE')),
-    reviewer_id           UUID REFERENCES users(user_id),
+    reviewer_id           TEXT,
+    reviewer_name         TEXT,
     decided_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
     notes                 TEXT
 );
@@ -311,10 +334,11 @@ CREATE TABLE review_decisions (
 
 CREATE TABLE audit_events (
     audit_event_id  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id         UUID REFERENCES users(user_id),
+    user_id         TEXT,
+    username        TEXT,
     action          TEXT NOT NULL,     -- e.g. 'IMPORT_DATASET', 'REVIEW_FINDING', 'EXPORT_REPORT'
     target_type     TEXT,
-    target_id       UUID,
+    target_id       TEXT,
     occurred_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
     details_json    JSONB
 );

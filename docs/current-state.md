@@ -25,7 +25,8 @@ Full-Stack MVP Complete — All P0, P1, and Validation Milestones Operational.
 - **Deterministic Explainability Engine**:
   - 100% non-generative, template-based explanation generator producing clear rationale, decomposed quality metrics, supporting/contradicting signals, and recommended supervisory actions without LLM hallucination.
 - **Synthetic Ground-Truth Validation & Review Yield Suite**:
-  - Implements the Generator/Detector Independence Protocol (§19.4) with separate tuning and held-out test splits.
+  - Implements the Generator/Detector Independence Protocol (§19.4) with separate tuning (10 scenarios) and held-out (5 scenarios, 33.3% ratio) test splits across 6 parameter dimensions.
+  - Formally audited and certified for non-circularity (`docs/circularity_audit_report.md`).
   - Calculates Precision, Recall (100%), F1, Top-K recall, and Supervisory Review Yield curve.
 - **FastAPI REST Backend**:
   - Endpoints for datasets, findings, evidence drill-down, review decisions, peer benchmarks, validation, audit logs, and export reports.
@@ -33,5 +34,7 @@ Full-Stack MVP Complete — All P0, P1, and Validation Milestones Operational.
   - Cyber command center aesthetic with dark theme, glassmorphism, side-by-side Goodhart's Law reality check ("The Wow Moment"), interactive evidence drill-down modal, supervisory review action workflow, peer benchmark charts, negative space matrix, and review yield curves.
 
 ## Test Status
-- `pytest tests/ -v`: 19 passed, 0 failed.
+- `python -m pytest tests/ -v`: 139 passed, 0 failed.
+- Circularity & Independence Regression Suite (`test_circularity_audit.py`): 8/8 passed.
 - End-to-end integration tests: 10/10 passed.
+

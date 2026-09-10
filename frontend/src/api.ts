@@ -11,6 +11,54 @@ import type {
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
+let _authToken: string | null = typeof window !== "undefined" ? localStorage.getItem("sat_auth_token") : null;
+
+export function setAuthToken(token: string | null) {
+  _authToken = token;
+  if (typeof window !== "undefined") {
+    if (token) localStorage.setItem("sat_auth_token", token);
+    else localStorage.removeItem("sat_auth_token");
+  }
+}
+
+export function getAuthToken(): string | null {
+  return _authToken;
+}
+
+export async function login(username: string, password: string): Promise<any> {
+  const res = await fetch(`${API_BASE}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Login failed" }));
+    throw new Error(err.detail || "Authentication failed");
+  }
+  const data = await res.json();
+  if (data.access_token) {
+    setAuthToken(data.access_token);
+  }
+  return data;
+}
+
+export async function fetchCurrentUser(): Promise<any> {
+  return authFetch(`${API_BASE}/auth/me`);
+}
+
+async function authFetch(url: string, options: RequestInit = {}): Promise<any> {
+  const headers = new Headers(options.headers || {});
+  if (_authToken && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${_authToken}`);
+  }
+  const res = await fetch(url, { ...options, headers });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || `Request failed with status ${res.status}`);
+  }
+  return res.json();
+}
+
 export async function fetchHealth(): Promise<any> {
   const res = await fetch(`${API_BASE}/health`);
   if (!res.ok) throw new Error("Backend health check failed");
@@ -21,42 +69,34 @@ export async function fetchDatasets(): Promise<{
   active_version_id: string | null;
   datasets: DatasetItem[];
 }> {
-  const res = await fetch(`${API_BASE}/datasets`);
-  if (!res.ok) throw new Error("Failed to fetch datasets");
-  return res.json();
+  return authFetch(`${API_BASE}/datasets`);
 }
 
 export async function loadDemoDataset(
   scenarioType: "critical_infrastructure" | "held_out_test"
 ): Promise<any> {
-  const res = await fetch(`${API_BASE}/datasets/load-demo`, {
+  return authFetch(`${API_BASE}/datasets/load-demo`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ scenario_type: scenarioType }),
   });
-  if (!res.ok) throw new Error("Failed to load demo dataset");
-  return res.json();
 }
 
 export async function uploadDatasetFile(file: File): Promise<any> {
   const formData = new FormData();
   formData.append("file", file);
-  const res = await fetch(`${API_BASE}/datasets/upload`, {
+  return authFetch(`${API_BASE}/datasets/upload`, {
     method: "POST",
     body: formData,
   });
-  if (!res.ok) throw new Error("Failed to upload dataset file");
-  return res.json();
 }
 
 export async function switchDatasetVersion(versionId: string): Promise<any> {
-  const res = await fetch(`${API_BASE}/datasets/switch-version`, {
+  return authFetch(`${API_BASE}/datasets/switch-version`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ dataset_version_id: versionId }),
   });
-  if (!res.ok) throw new Error("Failed to switch dataset version");
-  return res.json();
 }
 
 export async function fetchFindings(params?: {
@@ -75,15 +115,11 @@ export async function fetchFindings(params?: {
   if (params?.min_priority) query.set("min_priority", params.min_priority.toString());
   if (params?.dataset_version_id) query.set("dataset_version_id", params.dataset_version_id);
 
-  const res = await fetch(`${API_BASE}/findings?${query.toString()}`);
-  if (!res.ok) throw new Error("Failed to fetch findings");
-  return res.json();
+  return authFetch(`${API_BASE}/findings?${query.toString()}`);
 }
 
 export async function fetchFindingDetail(findingId: string): Promise<FindingDetail> {
-  const res = await fetch(`${API_BASE}/findings/${findingId}`);
-  if (!res.ok) throw new Error("Failed to fetch finding details");
-  return res.json();
+  return authFetch(`${API_BASE}/findings/${findingId}`);
 }
 
 export async function submitReviewDecision(
@@ -91,7 +127,7 @@ export async function submitReviewDecision(
   decision: ReviewDecisionState,
   notes?: string
 ): Promise<any> {
-  const res = await fetch(`${API_BASE}/reviews`, {
+  return authFetch(`${API_BASE}/reviews`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -100,8 +136,6 @@ export async function submitReviewDecision(
       notes: notes || "",
     }),
   });
-  if (!res.ok) throw new Error("Failed to submit review decision");
-  return res.json();
 }
 
 export async function fetchBenchmarks(versionId?: string): Promise<{
@@ -110,26 +144,18 @@ export async function fetchBenchmarks(versionId?: string): Promise<{
   cohorts: PeerCohort[];
 }> {
   const query = versionId ? `?dataset_version_id=${versionId}` : "";
-  const res = await fetch(`${API_BASE}/benchmarks${query}`);
-  if (!res.ok) throw new Error("Failed to fetch benchmarks");
-  return res.json();
+  return authFetch(`${API_BASE}/benchmarks${query}`);
 }
 
 export async function fetchValidationResults(): Promise<ValidationResponse> {
-  const res = await fetch(`${API_BASE}/validation`);
-  if (!res.ok) throw new Error("Failed to fetch validation results");
-  return res.json();
+  return authFetch(`${API_BASE}/validation`);
 }
 
 export async function fetchAuditLogs(): Promise<AuditEventItem[]> {
-  const res = await fetch(`${API_BASE}/audit`);
-  if (!res.ok) throw new Error("Failed to fetch audit logs");
-  return res.json();
+  return authFetch(`${API_BASE}/audit`);
 }
 
 export async function fetchExportReport(versionId?: string): Promise<any> {
   const query = versionId ? `?dataset_version_id=${versionId}` : "";
-  const res = await fetch(`${API_BASE}/export/report${query}`);
-  if (!res.ok) throw new Error("Failed to generate export report");
-  return res.json();
+  return authFetch(`${API_BASE}/export/report${query}`);
 }

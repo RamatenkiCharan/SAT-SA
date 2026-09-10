@@ -2,10 +2,10 @@
 Data Quality Score - pinned formula, SRS v2.0 §7.2.1.
 
     DataQualityScore(dataset) =
-        0.35 * CompletenessRatio
+        0.30 * CompletenessRatio
       + 0.25 * ConsistencyRatio
       + 0.25 * CoverageRatio        (capped at 1.0)
-      + 0.15 * SampleSufficiencyRatio
+      + 0.20 * SampleSufficiencyRatio
 
 Hard rules this module MUST respect (do not "simplify" these away):
   - Weights are read from the `rulesets` table (data_quality_score / V1), never
@@ -22,20 +22,22 @@ Hard rules this module MUST respect (do not "simplify" these away):
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from typing import Any
 from uuid import UUID
 
-# Fallback only - production code must load this from the `rulesets` table
-# (ruleset_name='data_quality_score', version='V1') via a repository, so a
-# weight change is a data migration, not a code deploy (AGENTS.md §28).
-_FALLBACK_WEIGHTS = {
-    "completeness_weight": 0.35,
-    "consistency_weight": 0.25,
-    "coverage_weight": 0.25,
-    "sample_sufficiency_weight": 0.15,
-    "minimum_sample_size_default": 30,
-}
+from backend.models.ruleset import (
+    DEFAULT_AUTHORITATIVE_RULESET_V1,
+    AnalyticalRuleset,
+    DataQualityWeights,
+)
+
+# Explicit fallback only - production code loads from versioned rulesets
+_FALLBACK_WEIGHTS = DEFAULT_AUTHORITATIVE_RULESET_V1.dq_weights.to_dict()
+
+
 
 
 @dataclass(frozen=True)
@@ -67,6 +69,45 @@ class DataQualityResult:
     components: DataQualityComponents
     ruleset_version: str
     computed_at: datetime
+    warnings: list[str] = field(default_factory=list)
+
+    @property
+    def overall_score(self) -> float:
+        return self.score
+
+    @property
+    def completeness_score(self) -> float:
+        return self.components.completeness_ratio
+
+    @property
+    def consistency_score(self) -> float:
+        return self.components.consistency_ratio
+
+    @property
+    def coverage_score(self) -> float:
+        return self.components.coverage_ratio
+
+    @property
+    def sufficiency_score(self) -> float:
+        return self.components.sample_sufficiency_ratio
+
+    @property
+    def reasons(self) -> list[str]:
+        return self.warnings
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "dataset_version_id": str(self.dataset_version_id),
+            "overall_score": round(self.score, 4),
+            "completeness_score": round(self.completeness_score, 4),
+            "consistency_score": round(self.consistency_score, 4),
+            "coverage_score": round(self.coverage_score, 4),
+            "sufficiency_score": round(self.sufficiency_score, 4),
+            "warnings": list(self.warnings),
+            "reasons": list(self.reasons),
+            "ruleset_version": self.ruleset_version,
+            "computed_at": self.computed_at.isoformat(),
+        }
 
 
 class InsufficientInputError(ValueError):
@@ -89,15 +130,26 @@ def _safe_ratio(numerator: float, denominator: float, *, cap_at_one: bool) -> fl
 def compute_data_quality_score(
     inputs: DataQualityInputs,
     dataset_version_id: UUID,
-    weights: dict | None = None,
+    weights: dict | DataQualityWeights | None = None,
     ruleset_version: str = "V1",
+    warnings: list[str] | None = None,
+    ruleset: AnalyticalRuleset | None = None,
 ) -> DataQualityResult:
     """
     Pure function. No DB access, no side effects - callers pass in weights
-    loaded from the rulesets table so this stays independently unit-testable
+    loaded from versioned rulesets so this stays independently unit-testable
     (AGENTS.md §55 analytics test requirement) and reproducible (§30).
     """
-    w = weights or _FALLBACK_WEIGHTS
+    r_ver = ruleset.version if ruleset is not None else ruleset_version
+
+    if ruleset is not None:
+        w_dict = ruleset.dq_weights.to_dict()
+    elif isinstance(weights, DataQualityWeights):
+        w_dict = weights.to_dict()
+    elif isinstance(weights, dict):
+        w_dict = weights
+    else:
+        w_dict = _FALLBACK_WEIGHTS
 
     completeness_ratio = _safe_ratio(
         inputs.total_required_fields - inputs.missing_required_fields,
@@ -114,14 +166,14 @@ def compute_data_quality_score(
         max(inputs.expected_evidence_records, 1),
         cap_at_one=True,
     )
-    min_sample = w.get("minimum_sample_size_default", 30)
+    min_sample = w_dict.get("minimum_sample_size_default", 30)
     sample_sufficiency_ratio = min(1.0, inputs.actual_sample_size / max(min_sample, 1))
 
     score = (
-        w["completeness_weight"] * completeness_ratio
-        + w["consistency_weight"] * consistency_ratio
-        + w["coverage_weight"] * coverage_ratio
-        + w["sample_sufficiency_weight"] * sample_sufficiency_ratio
+        w_dict["completeness_weight"] * completeness_ratio
+        + w_dict["consistency_weight"] * consistency_ratio
+        + w_dict["coverage_weight"] * coverage_ratio
+        + w_dict["sample_sufficiency_weight"] * sample_sufficiency_ratio
     )
     # Clamp for floating-point drift only - the weighted sum of four ratios
     # each in [0,1] with weights summing to 1.0 is mathematically in [0,1].
@@ -136,6 +188,8 @@ def compute_data_quality_score(
             coverage_ratio=coverage_ratio,
             sample_sufficiency_ratio=sample_sufficiency_ratio,
         ),
-        ruleset_version=ruleset_version,
+        ruleset_version=r_ver,
         computed_at=datetime.now(timezone.utc),
+        warnings=warnings or [],
     )
+

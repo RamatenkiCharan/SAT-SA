@@ -167,6 +167,21 @@ export const FindingsView: React.FC<FindingsViewProps> = ({
                   <span className="badge badge-purple" style={{ fontSize: "0.68rem" }}>
                     {f.finding_type}
                   </span>
+                  {f.evidence_state && (
+                    <span
+                      className={`badge badge-${
+                        f.evidence_state === "SUPPORTED"
+                          ? "emerald"
+                          : f.evidence_state === "WEAKLY_SUPPORTED"
+                          ? "amber"
+                          : "rose"
+                      }`}
+                      style={{ fontSize: "0.68rem" }}
+                      title={`Evidentiary inference state: ${f.evidence_state}`}
+                    >
+                      {f.evidence_state.replace("_", " ")}
+                    </span>
+                  )}
                   {f.review_status ? (
                     <span className="badge badge-confirmed" style={{ fontSize: "0.68rem" }}>
                       ✓ {f.review_status}

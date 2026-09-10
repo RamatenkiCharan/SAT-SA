@@ -13,17 +13,25 @@ from analytics.data_quality.quality_score import (
     DataQualityResult,
     compute_data_quality_score,
 )
+from backend.models.ruleset import (
+    AnalyticalRuleset,
+    DataQualityWeights,
+)
+
 
 
 def evaluate_dataset_quality(
     dataset: CanonicalDataset,
     dataset_version_id: UUID,
-    weights: Optional[dict] = None,
+    weights: Optional[dict | DataQualityWeights] = None,
     ruleset_version: str = "V1",
+    ruleset: Optional[AnalyticalRuleset] = None,
 ) -> DataQualityResult:
     """
-    Computes data quality from real canonical records using the §7.2.1 formula.
+    Computes data quality from real canonical records using the §7.2.1 formula
+    and versioned ruleset parameters.
     """
+
     total_required = 0
     missing_required = 0
 
@@ -143,6 +151,33 @@ def evaluate_dataset_quality(
 
     actual_sample_size = len(dataset.alerts)
 
+    # Collect diagnostic warnings
+    warnings: list[str] = []
+    if missing_required > 0:
+        warnings.append(
+            f"Missing {missing_required} required fields out of {total_required} across canonical entities."
+        )
+    if failed_validations > 0:
+        warnings.append(
+            f"Failed {failed_validations} relational consistency validation checks out of {total_validations}."
+        )
+    if observed_evidence < expected_evidence:
+        warnings.append(
+            f"Observed evidence records ({observed_evidence}) is below expected baseline ({expected_evidence})."
+        )
+    min_sample = 30
+    if ruleset is not None:
+        min_sample = ruleset.dq_weights.minimum_sample_size_default
+    elif isinstance(weights, DataQualityWeights):
+        min_sample = weights.minimum_sample_size_default
+    elif isinstance(weights, dict):
+        min_sample = weights.get("minimum_sample_size_default", 30)
+
+    if actual_sample_size < min_sample:
+        warnings.append(
+            f"Alert sample size ({actual_sample_size}) is below recommended minimum threshold of {min_sample}."
+        )
+
     inputs = DataQualityInputs(
         missing_required_fields=missing_required,
         total_required_fields=total_required,
@@ -158,4 +193,7 @@ def evaluate_dataset_quality(
         dataset_version_id=dataset_version_id,
         weights=weights,
         ruleset_version=ruleset_version,
+        warnings=warnings,
+        ruleset=ruleset,
     )
+

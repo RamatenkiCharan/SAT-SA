@@ -145,7 +145,8 @@ export const DatasetManagerView: React.FC<DatasetManagerViewProps> = ({
             <thead>
               <tr style={{ borderBottom: "1px solid var(--border-subtle)", color: "var(--text-muted)", textAlign: "left" }}>
                 <th style={{ padding: "0.75rem" }}>Dataset Name</th>
-                <th style={{ padding: "0.75rem" }}>Version ID</th>
+                <th style={{ padding: "0.75rem" }}>Format</th>
+                <th style={{ padding: "0.75rem" }}>Version ID / Hash</th>
                 <th style={{ padding: "0.75rem" }}>Alert Records</th>
                 <th style={{ padding: "0.75rem" }}>Data Trust Score</th>
                 <th style={{ padding: "0.75rem" }}>Import Timestamp</th>
@@ -157,6 +158,8 @@ export const DatasetManagerView: React.FC<DatasetManagerViewProps> = ({
               {datasets.flatMap((ds) =>
                 ds.versions.map((v) => {
                   const isActive = v.dataset_version_id === activeVersionId;
+                  const format = v.provenance?.file_format?.toUpperCase() || (v.source_file_ref.startsWith("synthetic") ? "SYNTHETIC" : "JSON");
+                  const hashSnippet = v.provenance?.sha256_hash ? v.provenance.sha256_hash.slice(0, 8) : null;
                   return (
                     <tr
                       key={v.dataset_version_id}
@@ -168,10 +171,31 @@ export const DatasetManagerView: React.FC<DatasetManagerViewProps> = ({
                       <td style={{ padding: "0.75rem", fontWeight: 600, color: "#fff" }}>
                         {ds.name} (v{v.version_number})
                       </td>
-                      <td style={{ padding: "0.75rem", fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}>
-                        {v.dataset_version_id.slice(0, 8)}...
+                      <td style={{ padding: "0.75rem" }}>
+                        <span
+                          className="badge"
+                          style={{
+                            background: format === "CSV" ? "rgba(16, 185, 129, 0.15)" : format === "JSON" ? "rgba(139, 92, 246, 0.15)" : "rgba(255, 255, 255, 0.08)",
+                            color: format === "CSV" ? "#10b981" : format === "JSON" ? "#a78bfa" : "var(--text-muted)",
+                            fontSize: "0.68rem",
+                            fontWeight: 700,
+                          }}
+                        >
+                          {format}
+                        </span>
                       </td>
-                      <td style={{ padding: "0.75rem" }}>{v.row_count} alerts</td>
+                      <td style={{ padding: "0.75rem", fontFamily: "var(--font-mono)", color: "var(--text-muted)", fontSize: "0.74rem" }}>
+                        <div>{v.dataset_version_id.slice(0, 8)}...</div>
+                        {hashSnippet && <div style={{ fontSize: "0.65rem", color: "var(--text-muted)" }}>sha256:{hashSnippet}</div>}
+                      </td>
+                      <td style={{ padding: "0.75rem" }}>
+                        <div>{v.row_count} alerts</div>
+                        {v.provenance && (v.provenance.rejected_rows ?? 0) > 0 && (
+                          <div style={{ fontSize: "0.68rem", color: "#f87171" }}>
+                            {v.provenance.rejected_rows} rejected
+                          </div>
+                        )}
+                      </td>
                       <td style={{ padding: "0.75rem", color: "var(--accent-cyan)", fontWeight: 700 }}>
                         {v.data_quality_score ? `${(v.data_quality_score * 100).toFixed(1)}%` : "N/A"}
                       </td>

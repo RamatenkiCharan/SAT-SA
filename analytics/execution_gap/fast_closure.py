@@ -16,7 +16,8 @@ from uuid import UUID
 
 from analytics.peer_benchmark.benchmarks import PeerBenchmarkEngine
 from analytics.workflow.workflow_reconstruction import ReconstructedDataset, ReconstructedWorkflow
-from backend.models.canonical import EvidenceRef, Severity
+from backend.models.canonical import EvidenceRef, PeerFallbackState, Severity
+from backend.models.ruleset import FastClosureConfig
 
 
 @dataclass
@@ -31,6 +32,10 @@ class FastClosureSignal:
     peer_p25_evidence: float
     z_score: float
     evidence_refs: list[EvidenceRef] = field(default_factory=list)
+    peer_group: str = ""
+    peer_size: int = 0
+    fallback_state: PeerFallbackState = PeerFallbackState.DIRECT
+    peer_confidence: float = 1.0
 
 
 class FastClosureDetector:
@@ -38,9 +43,18 @@ class FastClosureDetector:
         self,
         mad_multiplier: float = 2.5,
         investigation_evidence_percentile: int = 25,
+        config: FastClosureConfig | None = None,
+        min_peer_group_size: int = 5,
     ):
-        self.mad_multiplier = mad_multiplier
-        self.investigation_evidence_percentile = investigation_evidence_percentile
+        if config is not None:
+            self.mad_multiplier = config.mad_multiplier
+            self.investigation_evidence_percentile = config.investigation_evidence_percentile
+            self.min_peer_group_size = config.min_peer_group_size
+        else:
+            self.mad_multiplier = mad_multiplier
+            self.investigation_evidence_percentile = investigation_evidence_percentile
+            self.min_peer_group_size = min_peer_group_size
+
 
     def detect(
         self,
@@ -72,9 +86,52 @@ class FastClosureDetector:
 
                 ev_count = w.evidence_count
 
+                # Extract asset dimensions if present
+                asset = w.asset
+                asset_class = (asset.asset_type or "UNKNOWN").upper() if asset else None
+                crit = (
+                    (asset.criticality.value if hasattr(asset.criticality, "value") else str(asset.criticality)).upper()
+                    if asset
+                    else w.alert.severity.value
+                )
+                env = (asset.environment or "PRODUCTION").upper() if asset else None
+                op_profile = (asset.expected_monitoring_context or "STANDARD_OPERATION").upper() if asset else None
+
+                # Multi-dimensional peer comparison check
+                comparison = benchmark_engine.compare_metric(
+                    entity_value=dur,
+                    asset_class=asset_class,
+                    criticality=crit,
+                    environment=env,
+                    operational_profile=op_profile,
+                    sector=cse.sector,
+                    scale=cse.scale,
+                    metric_name="closure_duration",
+                )
+
+                # If peer data is insufficient, strictly suppress finding
+                if comparison.is_suppressed or comparison.fallback_state == PeerFallbackState.INSUFFICIENT_PEER_DATA:
+                    continue
+
+                ev_comparison = benchmark_engine.compare_metric(
+                    entity_value=float(ev_count),
+                    asset_class=asset_class,
+                    criticality=crit,
+                    environment=env,
+                    operational_profile=op_profile,
+                    sector=cse.sector,
+                    scale=cse.scale,
+                    metric_name="evidence_count",
+                )
+
+                effective_median = comparison.peer_median
+                effective_mad = comparison.mad
+                effective_threshold_dur = max(0.0, effective_median - (self.mad_multiplier * effective_mad))
+                effective_threshold_ev = max(1.0, ev_comparison.p25 if not ev_comparison.is_suppressed else threshold_ev)
+
                 # Core FR-030 condition
-                if dur < threshold_dur and ev_count <= threshold_ev:
-                    z_score = abs(dur - dist_dur.median) / max(dist_dur.mad, 1e-4)
+                if dur < effective_threshold_dur and ev_count <= effective_threshold_ev:
+                    z_score = abs(dur - effective_median) / max(effective_mad, 1e-4)
 
                     refs: list[EvidenceRef] = [
                         EvidenceRef(entity_type="alert", entity_id=w.alert.alert_id)
@@ -99,12 +156,16 @@ class FastClosureDetector:
                             workflow=w,
                             closure_duration_seconds=dur,
                             evidence_count=ev_count,
-                            peer_median_duration=dist_dur.median,
-                            peer_mad_duration=dist_dur.mad,
-                            threshold_duration=threshold_dur,
-                            peer_p25_evidence=threshold_ev,
+                            peer_median_duration=effective_median,
+                            peer_mad_duration=effective_mad,
+                            threshold_duration=effective_threshold_dur,
+                            peer_p25_evidence=effective_threshold_ev,
                             z_score=z_score,
                             evidence_refs=refs,
+                            peer_group=comparison.peer_group,
+                            peer_size=comparison.peer_size,
+                            fallback_state=comparison.fallback_state,
+                            peer_confidence=comparison.confidence,
                         )
                     )
 

@@ -15,6 +15,7 @@ from uuid import UUID
 
 from analytics.workflow.workflow_reconstruction import ReconstructedDataset, ReconstructedWorkflow
 from backend.models.canonical import AssetCriticality, EvidenceRef, Severity
+from backend.models.ruleset import EscalationGapConfig
 
 
 @dataclass
@@ -28,8 +29,25 @@ class EscalationGapSignal:
 
 
 class EscalationGapDetector:
-    def __init__(self, applies_to_severity: list[str] | None = None):
-        self.applies_to_severity = applies_to_severity or ["CRITICAL"]
+    def __init__(
+        self,
+        applies_to_severity: list[str] | None = None,
+        config: EscalationGapConfig | None = None,
+    ):
+        if config is not None:
+            self.applies_to_severity = list(config.applies_to_severity)
+            self.high_impact_categories = set(c.lower() for c in config.high_impact_categories)
+        else:
+            self.applies_to_severity = applies_to_severity or ["CRITICAL"]
+            self.high_impact_categories = {
+                "ransomware",
+                "scada intrusion",
+                "data exfiltration",
+                "privilege escalation",
+                "unauthorized access",
+                "malware execution",
+                "command and control",
+            }
 
     def _is_escalation_expected(self, w: ReconstructedWorkflow) -> bool:
         # Pinned logic: Critical severity on Critical or High criticality asset,
@@ -38,19 +56,10 @@ class EscalationGapDetector:
         
         asset_crit = w.asset.criticality if w.asset else AssetCriticality.HIGH
         is_crit_asset = asset_crit in (AssetCriticality.CRITICAL, AssetCriticality.HIGH)
-
-        high_impact_categories = {
-            "ransomware",
-            "scada intrusion",
-            "data exfiltration",
-            "privilege escalation",
-            "unauthorized access",
-            "malware execution",
-            "command and control",
-        }
-        is_high_impact = w.alert.alert_category.lower() in high_impact_categories
+        is_high_impact = w.alert.alert_category.lower() in self.high_impact_categories
 
         return is_crit_sev and (is_crit_asset or is_high_impact)
+
 
     def detect(self, dataset: ReconstructedDataset) -> list[EscalationGapSignal]:
         signals: list[EscalationGapSignal] = []

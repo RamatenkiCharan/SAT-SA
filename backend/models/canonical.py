@@ -62,6 +62,28 @@ class ReviewDecisionState(str, Enum):
     INSUFFICIENT_EVIDENCE = "INSUFFICIENT_EVIDENCE"
 
 
+class EvidenceSufficiencyState(str, Enum):
+    """
+    Explicit evidentiary inference states.
+    Controls downstream confidence, prioritization, and positive conclusion validity.
+    """
+    SUPPORTED = "SUPPORTED"
+    WEAKLY_SUPPORTED = "WEAKLY_SUPPORTED"
+    INSUFFICIENT_EVIDENCE = "INSUFFICIENT_EVIDENCE"
+    NOT_ASSESSABLE = "NOT_ASSESSABLE"
+
+
+class PeerFallbackState(str, Enum):
+    """
+    Explicit fallback states for peer cohort benchmarking (SRS §7.7 / FR-060-064).
+    Enforces minimum-N awareness (min size 5) and mathematically bounded confidence.
+    """
+    DIRECT = "DIRECT"                          # Exact match on all peer dimensions with N >= 5
+    RELAXED_COHORT = "RELAXED_COHORT"          # Relaxed match on primary dimensions with N >= 5
+    GLOBAL_FALLBACK = "GLOBAL_FALLBACK"        # Global baseline population fallback with N >= 5
+    INSUFFICIENT_PEER_DATA = "INSUFFICIENT_PEER_DATA"  # N < 5 across all tiers (suppresses outlier findings)
+
+
 class FindingType(str, Enum):
     """SRS §7.4.1 / §7.5.1 pinned P0 detector families only. Extend deliberately."""
     FAST_CLOSURE = "FAST_CLOSURE"                # FR-030
@@ -199,6 +221,14 @@ class PeerGroup(BaseModel):
     peer_group_id: UUID
     definition: str = Field(..., description="Human-readable peer-grouping criteria, FR-060.")
     member_cse_ids: list[UUID] = Field(default_factory=list)
+    dataset_version_id: Optional[UUID] = Field(None, description="Dataset version this peer grouping belongs to.")
+    analysis_run_id: Optional[UUID] = Field(None, description="Analysis run ID.")
+    ruleset_version: Optional[str] = Field("V1", description="Ruleset version used for peer calculation.")
+    dimensions: dict[str, str] = Field(
+        default_factory=dict,
+        description="Peer grouping dimensions: asset_class, criticality, environment, operational_profile, sector, scale."
+    )
+    created_at: Optional[datetime] = Field(None, description="Timestamp of peer group calculation.")
 
     @property
     def size(self) -> int:
@@ -236,6 +266,10 @@ class DataQualityScore(BaseModel):
 class EvidenceRef(BaseModel):
     entity_type: str = Field(..., description="e.g. 'alert', 'investigation', 'case'.")
     entity_id: UUID
+    source_record_ref: Optional[str] = Field(
+        None, description="Pointer back to the untouched source record/file+row."
+    )
+
 
 
 class Finding(BaseModel):
@@ -265,6 +299,10 @@ class Finding(BaseModel):
     temporal_context: Optional[str] = None
 
     evidence_refs: list[EvidenceRef] = Field(default_factory=list)
+    evidence_state: EvidenceSufficiencyState = Field(
+        default=EvidenceSufficiencyState.SUPPORTED,
+        description="Explicit evidentiary sufficiency and inference control state.",
+    )
 
     analytical_method: str
     ruleset_version: str
@@ -289,6 +327,13 @@ class Finding(BaseModel):
         if self.data_quality_status.score <= 0.6:
             violations.append(
                 "DataQualityScore <= 0.6: FR-073 forbids surfacing as high priority."
+            )
+        if self.evidence_state in (
+            EvidenceSufficiencyState.INSUFFICIENT_EVIDENCE,
+            EvidenceSufficiencyState.NOT_ASSESSABLE,
+        ):
+            violations.append(
+                f"Evidence state is {self.evidence_state.value}: forbids surfacing as high priority."
             )
         independent_signals = len(self.supporting_signals)
         if independent_signals < 2:
