@@ -23,9 +23,7 @@ from analytics.data_quality.quality_processor import evaluate_dataset_quality
 from analytics.data_quality.quality_score import DataQualityResult
 from analytics.execution_gap.escalation_gap import EscalationGapDetector
 from analytics.execution_gap.fast_closure import FastClosureDetector
-from analytics.execution_gap.investigation_sufficiency import InvestigationSufficiencyDetector
 from analytics.execution_gap.repeated_unresolved import RepeatedUnresolvedDetector
-from analytics.execution_gap.workflow_shortcuts import WorkflowShortcutDetector
 from analytics.fusion.evidence_fusion import EvidenceFusionEngine
 from analytics.negative_space.coverage_gap import CoverageGapDetector
 from analytics.peer_benchmark.benchmarks import PeerBenchmarkEngine
@@ -867,8 +865,6 @@ def run_full_analytical_pipeline(
     escalation_gaps = escalation_gap_detector.detect(reconstructed_ds)
     repeated_unresolved = repeated_unresolved_detector.detect(reconstructed_ds)
     coverage_gaps = coverage_gap_detector.detect(canonical_ds, dq_result.score)
-    inv_sufficiencies = investigation_sufficiency_detector.detect(reconstructed_ds, benchmark_engine)
-    wf_shortcuts = workflow_shortcut_detector.detect(reconstructed_ds)
 
     # 6. Evidence Fusion
     fusion_engine = EvidenceFusionEngine(ruleset=active_ruleset)
@@ -886,8 +882,6 @@ def run_full_analytical_pipeline(
             escalation_gaps=escalation_gaps,
             repeated_unresolved=repeated_unresolved,
             coverage_gaps=coverage_gaps,
-            investigation_sufficiencies=inv_sufficiencies,
-            workflow_shortcuts=wf_shortcuts,
         )
         all_findings.extend(cse_findings)
 

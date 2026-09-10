@@ -48,7 +48,6 @@ def load_demo_dataset(
     repo: SATRepository = Depends(get_repository),
     user: UserContext = Depends(require_supervisor),
 ):
-    """Load a synthetic benchmark dataset. Requires analyst or higher role."""
     is_held_out = req.scenario_type == "held_out_test"
     dataset_id = uuid4()
     version_id = uuid4()
@@ -107,9 +106,6 @@ async def upload_dataset_file(
     repo: SATRepository = Depends(get_repository),
     user: UserContext = Depends(require_supervisor),
 ):
-    """Upload a CSV or JSON dataset file. Requires analyst or higher role."""
-    from backend.services.ingestion import parse_raw_payload, IngestionValidationError
-
     contents = await file.read()
     filename = file.filename or "upload.json"
 
@@ -133,7 +129,6 @@ def switch_active_version(
     repo: SATRepository = Depends(get_repository),
     user: UserContext = Depends(require_supervisor),
 ):
-    """Switch the active dataset version. Requires supervisor or admin role."""
     if req.dataset_version_id not in repo.dataset_versions:
         raise HTTPException(status_code=404, detail="Dataset version not found.")
     repo.active_dataset_version_id = req.dataset_version_id

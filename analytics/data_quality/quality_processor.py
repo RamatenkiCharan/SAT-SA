@@ -188,12 +188,9 @@ def evaluate_dataset_quality(
         actual_sample_size=actual_sample_size,
     )
 
-    from uuid import uuid4 as _uuid4
-    resolved_ver_id = dataset_version_id if dataset_version_id is not None else _uuid4()
-
     return compute_data_quality_score(
         inputs=inputs,
-        dataset_version_id=resolved_ver_id,
+        dataset_version_id=dataset_version_id,
         weights=weights,
         ruleset_version=ruleset_version,
         warnings=warnings,

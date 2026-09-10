@@ -49,11 +49,8 @@ async def lifespan(app: FastAPI):
             findings=pipeline_res.findings,
             dq_result=pipeline_res.data_quality_result,
             description="Pre-seeded multi-sector CSE operational evidence bundle featuring National Power Dispatch Center (NPDC) Goodhart's Law case study.",
-            analysis_run_id=analysis_run_id,
-            ruleset_version="V1",
         )
     yield
-
 
 
 app = FastAPI(
@@ -83,7 +80,6 @@ app.include_router(benchmarks_router)
 app.include_router(validation_router)
 app.include_router(audit_router)
 app.include_router(export_router)
-app.include_router(rulesets_router)
 
 
 @app.get("/api/health")
