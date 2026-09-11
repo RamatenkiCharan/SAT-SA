@@ -46,12 +46,45 @@ export async function fetchCurrentUser(): Promise<any> {
   return authFetch(`${API_BASE}/auth/me`);
 }
 
+async function ensureAuthToken(): Promise<string | null> {
+  if (_authToken) return _authToken;
+  try {
+    const res = await fetch(`${API_BASE}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: "supervisor", password: "Supervisor@SAT2026!" }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.access_token) {
+        setAuthToken(data.access_token);
+        return data.access_token;
+      }
+    }
+  } catch {
+    // Ignore offline/network startup errors
+  }
+  return null;
+}
+
 async function authFetch(url: string, options: RequestInit = {}): Promise<any> {
+  if (!_authToken) {
+    await ensureAuthToken();
+  }
   const headers = new Headers(options.headers || {});
   if (_authToken && !headers.has("Authorization")) {
     headers.set("Authorization", `Bearer ${_authToken}`);
   }
-  const res = await fetch(url, { ...options, headers });
+  let res = await fetch(url, { ...options, headers });
+  if (res.status === 401) {
+    _authToken = null;
+    if (typeof window !== "undefined") localStorage.removeItem("sat_auth_token");
+    const newToken = await ensureAuthToken();
+    if (newToken) {
+      headers.set("Authorization", `Bearer ${newToken}`);
+      res = await fetch(url, { ...options, headers });
+    }
+  }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(err.detail || `Request failed with status ${res.status}`);

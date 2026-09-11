@@ -10,7 +10,7 @@ import subprocess
 def main():
     print("=" * 70)
     print(" SAT-SA: Supervisory Analytics Tool for SOC Assessment")
-    print(" SIH Problem Statement 26157 • Air-Gapped NCIIPC Examiner Edition")
+    print(" Air-Gapped NCIIPC Examiner Edition")
     print("=" * 70)
     print("\n[+] Starting FastAPI backend with unified React dashboard on http://127.0.0.1:8000 ...")
     
@@ -21,7 +21,7 @@ def main():
         pass
 
     import uvicorn
-    uvicorn.run("backend.main:app", host="127.0.0.1", port=8000, reload=False)
+    uvicorn.run("backend.main:app", host="127.0.0.1", port=8000, reload=True)
 
 if __name__ == "__main__":
     main()
