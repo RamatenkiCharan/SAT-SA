@@ -60,9 +60,11 @@ export async function ensureAuthToken(): Promise<string | null> {
         setAuthToken(data.access_token);
         return data.access_token;
       }
+    } else {
+      console.warn(`SAT-SA Login Failed: ${res.status} ${res.statusText}`);
     }
-  } catch {
-    // Ignore offline/network startup errors
+  } catch (err) {
+    console.warn(`SAT-SA Login Network Error:`, err);
   }
   return null;
 }
@@ -71,20 +73,34 @@ async function authFetch(url: string, options: RequestInit = {}): Promise<any> {
   if (!_authToken) {
     await ensureAuthToken();
   }
-  const headers = new Headers(options.headers || {});
-  if (_authToken && !headers.has("Authorization")) {
-    headers.set("Authorization", `Bearer ${_authToken}`);
+  
+  // Use plain object for headers to prevent browser fetch quirks with FormData + Headers instances
+  const headersObj: Record<string, string> = {};
+  if (options.headers) {
+    const existing = new Headers(options.headers);
+    existing.forEach((val, key) => {
+      headersObj[key] = val;
+    });
   }
-  let res = await fetch(url, { ...options, headers });
+  
+  if (_authToken) {
+    headersObj["Authorization"] = `Bearer ${_authToken}`;
+  }
+
+  let res = await fetch(url, { ...options, headers: headersObj });
+  
   if (res.status === 401) {
     _authToken = null;
     if (typeof window !== "undefined") localStorage.removeItem("sat_auth_token");
     const newToken = await ensureAuthToken();
     if (newToken) {
-      headers.set("Authorization", `Bearer ${newToken}`);
-      res = await fetch(url, { ...options, headers });
+      headersObj["Authorization"] = `Bearer ${newToken}`;
+      
+      // If uploading a file, recreate FormData if possible, though browser support for re-sending is generally okay.
+      res = await fetch(url, { ...options, headers: headersObj });
     }
   }
+  
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(err.detail || `Request failed with status ${res.status}`);
