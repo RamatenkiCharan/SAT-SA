@@ -175,6 +175,9 @@ def test_orphan_findings_prevented_postgres(temp_db_path: str):
             analysis_run=pipeline_res.analysis_run,
         )
 
+    if hasattr(repo, "engine"):
+        repo.engine.dispose()
+
 
 def test_provenance_persistence_and_retrieval(temp_db_path: str):
     """
@@ -235,6 +238,9 @@ def test_provenance_persistence_and_retrieval(temp_db_path: str):
     assert len(trace.evidence_refs) == len(sample_finding.evidence_refs)
     assert trace.evidence_refs[0].source_record_ref is not None
 
+    if hasattr(repo, "engine"):
+        repo.engine.dispose()
+
     # Restart repository instance against same database
     restarted_repo = PostgresRepository(db_url=temp_db_path)
     restarted_run = restarted_repo.get_analysis_run(run_id)
@@ -245,6 +251,9 @@ def test_provenance_persistence_and_retrieval(temp_db_path: str):
     assert restarted_trace is not None
     assert restarted_trace.dataset_name == "Provenance Persistence Pack"
     assert restarted_trace.sha256_hash == "sha256_deadbeef"
+
+    if hasattr(restarted_repo, "engine"):
+        restarted_repo.engine.dispose()
 
 
 def test_finding_detail_and_provenance_api_endpoints(clean_in_memory_repo: InMemoryRepository):

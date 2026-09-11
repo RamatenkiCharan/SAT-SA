@@ -108,6 +108,8 @@ def test_postgres_repository_lifecycle_and_restart(temp_db_path: str):
     # -----------------------------------------------------------------------
     # 3. Simulate System / Container Restart
     # -----------------------------------------------------------------------
+    if hasattr(repo1, "engine"):
+        repo1.engine.dispose()
     del repo1
 
     # Spin up brand new repository instance pointing to the exact same database
@@ -171,6 +173,9 @@ def test_postgres_repository_lifecycle_and_restart(temp_db_path: str):
     assert "SUBMIT_SUPERVISORY_REVIEW_DECISION" in actions
     assert "EXPORT_SUPERVISORY_BRIEFING" in actions
 
+    if hasattr(repo2, "engine"):
+        repo2.engine.dispose()
+
 
 def test_api_workflow_end_to_end_across_restart(temp_db_path: str):
     """
@@ -230,6 +235,9 @@ def test_api_workflow_end_to_end_across_restart(temp_db_path: str):
     # -----------------------------------------------------------------------
     # 5. SIMULATE API RESTART
     # -----------------------------------------------------------------------
+    if hasattr(repo, "engine"):
+        repo.engine.dispose()
+    
     # Instantiate a new repository connected to the same DB and inject it into the app
     restarted_repo = PostgresRepository(db_url=temp_db_path)
     set_repository(restarted_repo)
@@ -295,6 +303,9 @@ def test_api_workflow_end_to_end_across_restart(temp_db_path: str):
     assert "INGEST_DATASET_VERSION" in actions
     assert "SUBMIT_SUPERVISORY_REVIEW_DECISION" in actions
 
+    if hasattr(restarted_repo, "engine"):
+        restarted_repo.engine.dispose()
+
 
 def test_database_seeded_user_auth(temp_db_path: str):
     """Verifies that default seed users in the database authenticate successfully."""
@@ -322,3 +333,6 @@ def test_database_seeded_user_auth(temp_db_path: str):
     # Test invalid password rejection
     bad_ctx = user_store.authenticate("admin", "WrongPassword123!")
     assert bad_ctx is None
+
+    if hasattr(repo, "engine"):
+        repo.engine.dispose()
