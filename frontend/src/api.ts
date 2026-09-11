@@ -46,7 +46,7 @@ export async function fetchCurrentUser(): Promise<any> {
   return authFetch(`${API_BASE}/auth/me`);
 }
 
-async function ensureAuthToken(): Promise<string | null> {
+export async function ensureAuthToken(): Promise<string | null> {
   if (_authToken) return _authToken;
   try {
     const res = await fetch(`${API_BASE}/auth/login`, {

@@ -9,7 +9,7 @@ import { ValidationView } from "./components/ValidationView";
 import { DatasetManagerView } from "./components/DatasetManagerView";
 import { AuditView } from "./components/AuditView";
 import type { DatasetItem, Finding } from "./types";
-import { fetchDatasets, fetchFindings, loadDemoDataset } from "./api";
+import { fetchDatasets, fetchFindings, loadDemoDataset, ensureAuthToken } from "./api";
 
 export function App() {
   const [activeTab, setActiveTab] = useState<string>("overview");
@@ -22,6 +22,7 @@ export function App() {
   const refreshData = async () => {
     setLoading(true);
     try {
+      await ensureAuthToken();
       const dsData = await fetchDatasets();
       setDatasets(dsData.datasets || []);
       const verId = dsData.active_version_id;
@@ -37,7 +38,7 @@ export function App() {
   };
 
   useEffect(() => {
-    refreshData();
+    ensureAuthToken().then(() => refreshData());
   }, []);
 
   const [loadingDemo, setLoadingDemo] = useState<boolean>(false);
