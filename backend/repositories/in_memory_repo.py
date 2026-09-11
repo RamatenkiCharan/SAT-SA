@@ -755,8 +755,23 @@ def get_repository() -> BaseSATRepository:
                 _GLOBAL_REPO = PostgresRepository()
                 logger.info("Initialized persistent PostgreSQL Repository.")
             except Exception as e:
-                logger.warning("Could not connect to PostgreSQL (%s); falling back to InMemoryRepository.", e)
-                _GLOBAL_REPO = InMemoryRepository()
+                # Do not silently degrade to non-persistent storage. Fall back to a
+                # local SQLite file so "restart-safe persistence" is true by default
+                # even when no Postgres instance/DATABASE_URL is configured.
+                logger.warning(
+                    "Could not connect to PostgreSQL (%s); falling back to local SQLite file.", e
+                )
+                try:
+                    from backend.repositories.postgres_repo import PostgresRepository
+                    sqlite_path = os.environ.get("SAT_SQLITE_PATH", "satsa_local.db")
+                    _GLOBAL_REPO = PostgresRepository(db_url=f"sqlite:///{sqlite_path}")
+                    logger.info("Initialized SQLite-backed Repository at %s.", sqlite_path)
+                except Exception as sqlite_err:
+                    logger.warning(
+                        "Could not initialize SQLite fallback (%s); using non-persistent InMemoryRepository.",
+                        sqlite_err,
+                    )
+                    _GLOBAL_REPO = InMemoryRepository()
     return _GLOBAL_REPO
 
 
