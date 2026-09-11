@@ -1288,7 +1288,7 @@ class PostgresRepository(BaseSATRepository):
             for cse in canonical_dataset.cse_list:
                 conn.execute(
                     text("""
-                    INSERT INTO cse (cse_id, dataset_version_id, name, sector, scale, reporting_period_id, source_record_ref, ingest_time)
+                    INSERT OR IGNORE INTO cse (cse_id, dataset_version_id, name, sector, scale, reporting_period_id, source_record_ref, ingest_time)
                     VALUES (:cid, :vid, :name, :sec, :scale, :rpid, :sref, :itime)
                     """),
                     {
@@ -1326,7 +1326,7 @@ class PostgresRepository(BaseSATRepository):
             for rp in rp_dict.values():
                 conn.execute(
                     text("""
-                    INSERT INTO reporting_periods (reporting_period_id, cse_id, period_start, period_end)
+                    INSERT OR IGNORE INTO reporting_periods (reporting_period_id, cse_id, period_start, period_end)
                     VALUES (:rpid, :cid, :pstart, :pend)
                     """),
                     {
@@ -1341,7 +1341,7 @@ class PostgresRepository(BaseSATRepository):
             for a in canonical_dataset.assets:
                 conn.execute(
                     text("""
-                    INSERT INTO assets (asset_id, dataset_version_id, cse_id, criticality, asset_type, environment, expected_monitoring_context, source_record_ref, ingest_time)
+                    INSERT OR IGNORE INTO assets (asset_id, dataset_version_id, cse_id, criticality, asset_type, environment, expected_monitoring_context, source_record_ref, ingest_time)
                     VALUES (:aid, :vid, :cid, :crit, :atype, :env, :ctx, :sref, :itime)
                     """),
                     {
@@ -1361,7 +1361,7 @@ class PostgresRepository(BaseSATRepository):
             for alt in canonical_dataset.alerts:
                 conn.execute(
                     text("""
-                    INSERT INTO alerts (alert_id, dataset_version_id, cse_id, asset_id, reporting_period_id, event_time, severity, alert_category, source, status, source_record_ref, ingest_time)
+                    INSERT OR IGNORE INTO alerts (alert_id, dataset_version_id, cse_id, asset_id, reporting_period_id, event_time, severity, alert_category, source, status, source_record_ref, ingest_time)
                     VALUES (:aid, :vid, :cid, :asid, :rpid, :etime, :sev, :cat, :src, :st, :sref, :itime)
                     """),
                     {
@@ -1384,7 +1384,7 @@ class PostgresRepository(BaseSATRepository):
             for inv in canonical_dataset.investigations:
                 conn.execute(
                     text("""
-                    INSERT INTO investigations (investigation_id, dataset_version_id, alert_id, started_at, ended_at, analyst_id, evidence_count, disposition, source_record_ref, ingest_time)
+                    INSERT OR IGNORE INTO investigations (investigation_id, dataset_version_id, alert_id, started_at, ended_at, analyst_id, evidence_count, disposition, source_record_ref, ingest_time)
                     VALUES (:invid, :vid, :aid, :sat, :eat, :anid, :evcnt, :disp, :sref, :itime)
                     """),
                     {
@@ -1405,7 +1405,7 @@ class PostgresRepository(BaseSATRepository):
             for case in canonical_dataset.cases:
                 conn.execute(
                     text("""
-                    INSERT INTO cases (case_id, dataset_version_id, alert_id, opened_at, closed_at, severity, outcome, source_record_ref, ingest_time)
+                    INSERT OR IGNORE INTO cases (case_id, dataset_version_id, alert_id, opened_at, closed_at, severity, outcome, source_record_ref, ingest_time)
                     VALUES (:cid, :vid, :aid, :oat, :cat, :sev, :outc, :sref, :itime)
                     """),
                     {
@@ -1425,7 +1425,7 @@ class PostgresRepository(BaseSATRepository):
             for esc in canonical_dataset.escalations:
                 conn.execute(
                     text("""
-                    INSERT INTO escalations (escalation_id, dataset_version_id, case_id, escalated_at, level, target, source_record_ref, ingest_time)
+                    INSERT OR IGNORE INTO escalations (escalation_id, dataset_version_id, case_id, escalated_at, level, target, source_record_ref, ingest_time)
                     VALUES (:eid, :vid, :cid, :eat, :lvl, :tgt, :sref, :itime)
                     """),
                     {
@@ -1444,7 +1444,7 @@ class PostgresRepository(BaseSATRepository):
             for act in canonical_dataset.actions:
                 conn.execute(
                     text("""
-                    INSERT INTO actions (action_id, dataset_version_id, case_id, action_type, performed_at, outcome, source_record_ref, ingest_time)
+                    INSERT OR IGNORE INTO actions (action_id, dataset_version_id, case_id, action_type, performed_at, outcome, source_record_ref, ingest_time)
                     VALUES (:aid, :vid, :cid, :atype, :pat, :outc, :sref, :itime)
                     """),
                     {
@@ -1463,7 +1463,7 @@ class PostgresRepository(BaseSATRepository):
             for clo in canonical_dataset.closures:
                 conn.execute(
                     text("""
-                    INSERT INTO closures (closure_id, dataset_version_id, case_id, closed_at, reason, reviewer, source_record_ref, ingest_time)
+                    INSERT OR IGNORE INTO closures (closure_id, dataset_version_id, case_id, closed_at, reason, reviewer, source_record_ref, ingest_time)
                     VALUES (:cid, :vid, :csid, :cat, :rsn, :rev, :sref, :itime)
                     """),
                     {
@@ -1482,7 +1482,7 @@ class PostgresRepository(BaseSATRepository):
             for cov in canonical_dataset.coverage_observations:
                 conn.execute(
                     text("""
-                    INSERT INTO coverage_observations (observation_id, dataset_version_id, cse_id, asset_id, alert_category, period_id, expected_count, observed_count, source_record_ref, ingest_time)
+                    INSERT OR IGNORE INTO coverage_observations (observation_id, dataset_version_id, cse_id, asset_id, alert_category, period_id, expected_count, observed_count, source_record_ref, ingest_time)
                     VALUES (:oid, :vid, :cid, :aid, :cat, :pid, :exp, :obs, :sref, :itime)
                     """),
                     {

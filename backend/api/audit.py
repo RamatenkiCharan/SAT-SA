@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 from backend.repositories.in_memory_repo import SATRepository, get_repository
-from backend.security.auth import UserContext, require_admin
+from backend.security.auth import UserContext, require_supervisor
 
 router = APIRouter(prefix="/api/audit", tags=["audit"])
 
@@ -15,7 +15,7 @@ router = APIRouter(prefix="/api/audit", tags=["audit"])
 def list_audit_events(
     limit: int = 100,
     repo: SATRepository = Depends(get_repository),
-    current_user: UserContext = Depends(require_admin),
+    current_user: UserContext = Depends(require_supervisor),
 ):
     events = repo.get_audit_events(limit=limit)
     return [
@@ -31,3 +31,4 @@ def list_audit_events(
         }
         for e in events
     ]
+

@@ -211,11 +211,11 @@ def test_supervisor_export_report_rbac(client: TestClient, auth_tokens: dict[str
 
 
 # ===========================================================================
-# 4. Admin-Only Endpoints (admin only)
+# 4. Supervisor-Level Endpoints (supervisor + admin)
 # ===========================================================================
 
-def test_admin_only_audit_endpoint_rbac(client: TestClient, auth_tokens: dict[str, str]):
-    """GET /api/audit: unauthenticated -> 401, analyst -> 403, supervisor -> 403, admin -> 200."""
+def test_audit_endpoint_rbac(client: TestClient, auth_tokens: dict[str, str]):
+    """GET /api/audit: unauthenticated -> 401, analyst -> 403, supervisor -> 200, admin -> 200."""
     # 1. Unauthenticated -> 401
     assert client.get("/api/audit").status_code == 401
 
@@ -223,9 +223,10 @@ def test_admin_only_audit_endpoint_rbac(client: TestClient, auth_tokens: dict[st
     resp_analyst = client.get("/api/audit", headers={"Authorization": f"Bearer {auth_tokens['analyst']}"})
     assert resp_analyst.status_code == 403
 
-    # 3. Supervisor -> 403 Forbidden (supervisor cannot inspect system audit ledger)
+    # 3. Supervisor -> 200 OK (supervisor can inspect audit ledger)
     resp_sup = client.get("/api/audit", headers={"Authorization": f"Bearer {auth_tokens['supervisor']}"})
-    assert resp_sup.status_code == 403
+    assert resp_sup.status_code == 200
+    assert isinstance(resp_sup.json(), list)
 
     # 4. Admin -> 200 OK
     resp_admin = client.get("/api/audit", headers={"Authorization": f"Bearer {auth_tokens['admin']}"})
@@ -259,14 +260,15 @@ def test_admin_only_user_roster_rbac(client: TestClient, auth_tokens: dict[str, 
 def test_header_spoofing_cannot_bypass_rbac_or_escalate_roles(client: TestClient, auth_tokens: dict[str, str]):
     """
     Sending X-User-Role: admin or role headers cannot bypass auth or escalate privileges.
+    Uses /api/auth/users (admin-only) to verify spoofing resistance.
     """
     # 1. Unauthenticated claiming X-User-Role: admin -> 401
-    resp = client.get("/api/audit", headers={"X-User-Role": "admin", "X-User-Id": "root"})
+    resp = client.get("/api/auth/users", headers={"X-User-Role": "admin", "X-User-Id": "root"})
     assert resp.status_code == 401
 
     # 2. Analyst claiming X-User-Role: admin on admin-only route -> 403
     resp_analyst = client.get(
-        "/api/audit",
+        "/api/auth/users",
         headers={
             "Authorization": f"Bearer {auth_tokens['analyst']}",
             "X-User-Role": "admin",
@@ -277,10 +279,11 @@ def test_header_spoofing_cannot_bypass_rbac_or_escalate_roles(client: TestClient
 
     # 3. Supervisor claiming X-User-Role: admin on admin-only route -> 403
     resp_sup = client.get(
-        "/api/audit",
+        "/api/auth/users",
         headers={
             "Authorization": f"Bearer {auth_tokens['supervisor']}",
             "X-User-Role": "admin",
         },
     )
     assert resp_sup.status_code == 403
+
