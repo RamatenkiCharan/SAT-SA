@@ -11,9 +11,18 @@ import {
   Calculator,
   Cpu,
   Info,
+  User,
+  MessageSquare,
 } from "lucide-react";
 import type { Finding, FindingDetail, ReviewDecisionState } from "../types";
-import { fetchFindingDetail, submitReviewDecision } from "../api";
+import {
+  fetchFindingDetail,
+  submitReviewDecision,
+  fetchCurrentUser,
+  getAuthToken,
+  sendEvidenceMessage,
+  fetchEvidenceMessages,
+} from "../api";
 
 interface FindingDetailModalProps {
   finding: Finding;
@@ -32,11 +41,71 @@ const STAGES: Array<{ id: ReviewStage; label: string; icon: React.FC<{ size?: nu
   { id: "sourcerecord", label: "6. Source Record", icon: FileText },
 ];
 
+interface CurrentUserInfo {
+  user_id: string;
+  username: string;
+  role: string;
+  full_name?: string;
+}
+
+const getRoleBadgeStyle = (role?: string) => {
+  const r = (role || "").toLowerCase();
+  if (r === "admin" || r === "administrator") {
+    return {
+      label: "Administrator",
+      bg: "rgba(167, 139, 250, 0.12)",
+      border: "rgba(167, 139, 250, 0.3)",
+      color: "#a78bfa",
+    };
+  }
+  if (r === "supervisor") {
+    return {
+      label: "Supervisor",
+      bg: "rgba(0, 240, 255, 0.12)",
+      border: "rgba(0, 240, 255, 0.3)",
+      color: "var(--accent-cyan)",
+    };
+  }
+  if (r === "analyst") {
+    return {
+      label: "Analyst",
+      bg: "rgba(16, 185, 129, 0.12)",
+      border: "rgba(16, 185, 129, 0.3)",
+      color: "#10b981",
+    };
+  }
+  return {
+    label: role ? role.charAt(0).toUpperCase() + role.slice(1) : "Examiner",
+    bg: "rgba(148, 163, 184, 0.12)",
+    border: "rgba(148, 163, 184, 0.3)",
+    color: "#94a3b8",
+  };
+};
+
+const parseJwtUser = (): CurrentUserInfo | null => {
+  try {
+    const token = getAuthToken();
+    if (!token) return null;
+    const parts = token.split(".");
+    if (parts.length < 2) return null;
+    const payload = JSON.parse(atob(parts[1]));
+    return {
+      user_id: payload.sub || "",
+      username: payload.username || "",
+      role: payload.role || "",
+      full_name: payload.full_name || undefined,
+    };
+  } catch {
+    return null;
+  }
+};
+
 export const FindingDetailModal: React.FC<FindingDetailModalProps> = ({
   finding,
   onClose,
   onReviewSubmitted,
 }) => {
+  const [currentUser, setCurrentUser] = useState<CurrentUserInfo | null>(() => parseJwtUser());
   const [detail, setDetail] = useState<FindingDetail | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [activeStage, setActiveStage] = useState<ReviewStage>("finding");
@@ -46,6 +115,82 @@ export const FindingDetailModal: React.FC<FindingDetailModalProps> = ({
   );
   const [notes, setNotes] = useState<string>(finding.review_notes || "");
   const [submitting, setSubmitting] = useState<boolean>(false);
+
+  const [evidenceMessage, setEvidenceMessage] = useState<string>("");
+  const [selectedEvidenceId, setSelectedEvidenceId] = useState<string>("");
+  const [recipientRole, setRecipientRole] = useState<string>("SOC Leadership / Tier-2 Lead");
+  const [sendingMessage, setSendingMessage] = useState<boolean>(false);
+  const [messageSuccessMsg, setMessageSuccessMsg] = useState<string | null>(null);
+  const [messageErrorMsg, setMessageErrorMsg] = useState<string | null>(null);
+  const [messagesList, setMessagesList] = useState<any[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetchEvidenceMessages(finding.finding_id)
+      .then((data) => {
+        if (isMounted && data) {
+          setMessagesList(data);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, [finding.finding_id]);
+
+  const handleSendEvidenceMessage = async () => {
+    if (!evidenceMessage || !evidenceMessage.trim()) {
+      setMessageErrorMsg("Please enter an evidence directive or inquiry message before sending.");
+      return;
+    }
+    setSendingMessage(true);
+    setMessageErrorMsg(null);
+    setMessageSuccessMsg(null);
+    try {
+      const res = await sendEvidenceMessage(
+        finding.finding_id,
+        evidenceMessage.trim(),
+        selectedEvidenceId || undefined,
+        recipientRole
+      );
+      setMessageSuccessMsg("✓ Message successfully dispatched to SOC & recorded in cryptographic audit ledger!");
+      setEvidenceMessage("");
+      if (res) {
+        setMessagesList((prev) => [...prev, res]);
+      }
+      setTimeout(() => setMessageSuccessMsg(null), 5000);
+    } catch (err: any) {
+      setMessageErrorMsg("Failed to send message: " + (err.message || String(err)));
+    } finally {
+      setSendingMessage(false);
+    }
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+    fetchCurrentUser()
+      .then((data) => {
+        if (isMounted && data) {
+          setCurrentUser(data);
+        }
+      })
+      .catch((err) => {
+        console.warn("Failed to load current user:", err);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
 
   useEffect(() => {
     let isMounted = true;
@@ -246,9 +391,76 @@ export const FindingDetailModal: React.FC<FindingDetailModalProps> = ({
                   </div>
                 </div>
 
-                <div style={{ padding: "0.85rem", background: "rgba(15, 23, 42, 0.7)", borderRadius: "var(--radius-sm)", borderLeft: "3px solid var(--accent-cyan)" }}>
+                <div style={{ padding: "0.85rem", background: "rgba(15, 23, 42, 0.7)", borderRadius: "var(--radius-sm)", borderLeft: "3px solid var(--accent-cyan)", marginBottom: "1rem" }}>
                   <div style={{ fontSize: "0.75rem", color: "var(--accent-cyan)", fontWeight: 600, marginBottom: "0.2rem" }}>HEADLINE</div>
                   <div style={{ fontSize: "0.92rem", color: "#fff", lineHeight: 1.4 }}>{finding.headline}</div>
+                </div>
+
+                {/* Visual Workflow Lifecycle Timeline */}
+                <div style={{ marginTop: "1rem" }}>
+                  <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 600, marginBottom: "0.5rem", textTransform: "uppercase" }}>
+                    Reconstructed SOC Workflow Lifecycle & Gap Analysis
+                  </div>
+                  <div className="workflow-timeline">
+                    {/* 1. Alert */}
+                    <div className="workflow-node present">
+                      <span style={{ fontSize: "0.7rem", color: "var(--accent-emerald)", fontWeight: 700 }}>1. ALERT</span>
+                      <span style={{ fontSize: "0.68rem", color: "var(--text-secondary)" }}>
+                        {finding.evidence_record_count > 0 ? `${finding.evidence_record_count} record(s)` : "Present"}
+                      </span>
+                    </div>
+                    <div className="workflow-connector" />
+
+                    {/* 2. Investigation */}
+                    <div className={`workflow-node ${finding.finding_type === "FAST_CLOSURE" ? "warning" : "present"}`}>
+                      <span style={{ fontSize: "0.7rem", color: finding.finding_type === "FAST_CLOSURE" ? "var(--accent-amber)" : "var(--accent-emerald)", fontWeight: 700 }}>
+                        2. INVESTIGATION
+                      </span>
+                      <span style={{ fontSize: "0.68rem", color: "var(--text-secondary)" }}>
+                        {finding.finding_type === "FAST_CLOSURE" ? "Substandard" : "Logged"}
+                      </span>
+                    </div>
+                    <div className="workflow-connector" />
+
+                    {/* 3. Case */}
+                    <div className="workflow-node present">
+                      <span style={{ fontSize: "0.7rem", color: "var(--accent-emerald)", fontWeight: 700 }}>3. CASE</span>
+                      <span style={{ fontSize: "0.68rem", color: "var(--text-secondary)" }}>Present</span>
+                    </div>
+                    <div className="workflow-connector" />
+
+                    {/* 4. Escalation */}
+                    <div className={`workflow-node ${finding.finding_type === "ESCALATION_GAP" ? "missing" : "present"}`}>
+                      <span style={{ fontSize: "0.7rem", color: finding.finding_type === "ESCALATION_GAP" ? "var(--accent-crimson)" : "var(--accent-emerald)", fontWeight: 700 }}>
+                        4. ESCALATION {finding.finding_type === "ESCALATION_GAP" ? "✕" : "✓"}
+                      </span>
+                      <span style={{ fontSize: "0.68rem", color: finding.finding_type === "ESCALATION_GAP" ? "var(--accent-crimson)" : "var(--text-secondary)" }}>
+                        {finding.finding_type === "ESCALATION_GAP" ? "MISSING RECORD" : "Escalated"}
+                      </span>
+                    </div>
+                    <div className="workflow-connector" />
+
+                    {/* 5. Remediation Action */}
+                    <div className={`workflow-node ${finding.finding_type === "REPEATED_UNRESOLVED_ALERTS" ? "missing" : "present"}`}>
+                      <span style={{ fontSize: "0.7rem", color: finding.finding_type === "REPEATED_UNRESOLVED_ALERTS" ? "var(--accent-crimson)" : "var(--accent-emerald)", fontWeight: 700 }}>
+                        5. ACTION {finding.finding_type === "REPEATED_UNRESOLVED_ALERTS" ? "✕" : "✓"}
+                      </span>
+                      <span style={{ fontSize: "0.68rem", color: finding.finding_type === "REPEATED_UNRESOLVED_ALERTS" ? "var(--accent-crimson)" : "var(--text-secondary)" }}>
+                        {finding.finding_type === "REPEATED_UNRESOLVED_ALERTS" ? "MISSING ACTION" : "Remediated"}
+                      </span>
+                    </div>
+                    <div className="workflow-connector" />
+
+                    {/* 6. Closure */}
+                    <div className={`workflow-node ${finding.finding_type === "FAST_CLOSURE" ? "warning" : "present"}`}>
+                      <span style={{ fontSize: "0.7rem", color: finding.finding_type === "FAST_CLOSURE" ? "var(--accent-amber)" : "var(--accent-emerald)", fontWeight: 700 }}>
+                        6. CLOSURE
+                      </span>
+                      <span style={{ fontSize: "0.68rem", color: "var(--text-secondary)" }}>
+                        {finding.finding_type === "FAST_CLOSURE" ? "Rapid (3.8m)" : "Standard"}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -718,6 +930,204 @@ export const FindingDetailModal: React.FC<FindingDetailModalProps> = ({
 
                   </div>
                 ) : null}
+
+                {/* Supervisory Evidence Message & Directive Dispatch */}
+                <div
+                  style={{
+                    marginTop: "1.25rem",
+                    padding: "1rem",
+                    background: "rgba(15, 23, 42, 0.8)",
+                    border: "1px solid rgba(0, 240, 255, 0.25)",
+                    borderRadius: "var(--radius-sm)",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.6rem", flexWrap: "wrap", gap: "0.5rem" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                      <MessageSquare size={14} color="var(--accent-cyan)" />
+                      <span style={{ fontSize: "0.8rem", color: "#fff", fontWeight: 700, textTransform: "uppercase" }}>
+                        Supervisory Evidence Inquiry & Operational Directive
+                      </span>
+                    </div>
+                    <span style={{ fontSize: "0.68rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
+                      Action: EVIDENCE_MESSAGE_SENT
+                    </span>
+                  </div>
+
+                  <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)", margin: "0 0 0.75rem 0", lineHeight: 1.4 }}>
+                    Dispatch an auditable operational directive or inquiry regarding this grounded evidence directly to SOC leadership or analyst team.
+                  </p>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem", marginBottom: "0.6rem" }}>
+                    <div>
+                      <label style={{ display: "block", fontSize: "0.7rem", color: "var(--text-muted)", marginBottom: "0.2rem" }}>
+                        Target Evidence Reference (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g., AL-84920 or Case #CS-001 (or leave blank for all)"
+                        value={selectedEvidenceId}
+                        onChange={(e) => setSelectedEvidenceId(e.target.value)}
+                        id="evidence-target-input"
+                        style={{
+                          width: "100%",
+                          background: "var(--bg-input)",
+                          border: "1px solid var(--border-subtle)",
+                          borderRadius: "var(--radius-sm)",
+                          padding: "0.4rem 0.6rem",
+                          color: "#fff",
+                          fontSize: "0.78rem",
+                          boxSizing: "border-box",
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: "block", fontSize: "0.7rem", color: "var(--text-muted)", marginBottom: "0.2rem" }}>
+                        Recipient Role
+                      </label>
+                      <select
+                        value={recipientRole}
+                        onChange={(e) => setRecipientRole(e.target.value)}
+                        id="evidence-recipient-select"
+                        style={{
+                          width: "100%",
+                          background: "var(--bg-input)",
+                          border: "1px solid var(--border-subtle)",
+                          borderRadius: "var(--radius-sm)",
+                          padding: "0.4rem 0.6rem",
+                          color: "#fff",
+                          fontSize: "0.78rem",
+                          boxSizing: "border-box",
+                        }}
+                      >
+                        <option value="SOC Leadership / Tier-2 Lead">SOC Leadership / Tier-2 Lead</option>
+                        <option value="Senior SOC Incident Responder">Senior SOC Incident Responder</option>
+                        <option value="Critical Infrastructure Asset Owner">Critical Infrastructure Asset Owner</option>
+                        <option value="Internal Quality Assurance Examiner">Internal Quality Assurance Examiner</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", gap: "0.6rem", alignItems: "flex-start" }}>
+                    <div style={{ flex: 1 }}>
+                      <input
+                        type="text"
+                        placeholder="Enter message (e.g., Requesting raw firewall PCAP logs and Tier-2 escalation ticket for alert AL-10492)..."
+                        value={evidenceMessage}
+                        onChange={(e) => {
+                          setEvidenceMessage(e.target.value);
+                          if (messageErrorMsg) setMessageErrorMsg(null);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSendEvidenceMessage();
+                          }
+                        }}
+                        id="evidence-message-input"
+                        style={{
+                          width: "100%",
+                          background: "var(--bg-input)",
+                          border: "1px solid var(--border-subtle)",
+                          borderRadius: "var(--radius-sm)",
+                          padding: "0.5rem 0.75rem",
+                          color: "#fff",
+                          fontSize: "0.8rem",
+                          boxSizing: "border-box",
+                        }}
+                      />
+                    </div>
+                    <button
+                      onClick={handleSendEvidenceMessage}
+                      disabled={sendingMessage || !evidenceMessage.trim()}
+                      className="btn-primary"
+                      id="send-evidence-message-btn"
+                      style={{
+                        padding: "0.5rem 1rem",
+                        fontSize: "0.78rem",
+                        whiteSpace: "nowrap",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.35rem",
+                        opacity: sendingMessage || !evidenceMessage.trim() ? 0.6 : 1,
+                        cursor: sendingMessage || !evidenceMessage.trim() ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      <Send size={13} /> {sendingMessage ? "Sending..." : "Send Message"}
+                    </button>
+                  </div>
+
+                  {messageSuccessMsg && (
+                    <div
+                      id="evidence-message-success"
+                      style={{
+                        marginTop: "0.6rem",
+                        padding: "0.4rem 0.75rem",
+                        borderRadius: "var(--radius-sm)",
+                        background: "rgba(16, 185, 129, 0.15)",
+                        border: "1px solid rgba(16, 185, 129, 0.4)",
+                        color: "#34d399",
+                        fontSize: "0.75rem",
+                        fontWeight: 600,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.35rem",
+                      }}
+                    >
+                      <CheckCircle2 size={13} />
+                      {messageSuccessMsg}
+                    </div>
+                  )}
+
+                  {messageErrorMsg && (
+                    <div
+                      id="evidence-message-error"
+                      style={{
+                        marginTop: "0.6rem",
+                        padding: "0.4rem 0.75rem",
+                        borderRadius: "var(--radius-sm)",
+                        background: "rgba(239, 68, 68, 0.15)",
+                        border: "1px solid rgba(239, 68, 68, 0.4)",
+                        color: "#fca5a5",
+                        fontSize: "0.75rem",
+                      }}
+                    >
+                      {messageErrorMsg}
+                    </div>
+                  )}
+
+                  {/* Dispatched Messages Log */}
+                  {messagesList.length > 0 && (
+                    <div style={{ marginTop: "0.85rem", borderTop: "1px solid rgba(255, 255, 255, 0.06)", paddingTop: "0.6rem" }}>
+                      <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 700, marginBottom: "0.4rem" }}>
+                        Dispatched Directives & Communication Thread ({messagesList.length})
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", maxHeight: "120px", overflowY: "auto" }}>
+                        {messagesList.map((m: any, i: number) => (
+                          <div
+                            key={m.message_id || i}
+                            style={{
+                              background: "rgba(0, 0, 0, 0.35)",
+                              padding: "0.4rem 0.6rem",
+                              borderRadius: "var(--radius-sm)",
+                              border: "1px solid var(--border-subtle)",
+                              fontSize: "0.74rem",
+                            }}
+                          >
+                            <div style={{ display: "flex", justifyContent: "space-between", color: "var(--accent-cyan)", marginBottom: "0.15rem" }}>
+                              <span style={{ fontWeight: 600 }}>
+                                {m.sender} ({m.role || "Supervisor"}) → {m.recipient || "SOC Lead"}
+                              </span>
+                              <span style={{ color: "var(--text-muted)", fontFamily: "var(--font-mono)", fontSize: "0.68rem" }}>
+                                {new Date(m.sent_at).toLocaleTimeString()}
+                              </span>
+                            </div>
+                            <div style={{ color: "var(--text-primary)" }}>"{m.message}"</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -813,68 +1223,153 @@ export const FindingDetailModal: React.FC<FindingDetailModalProps> = ({
               marginTop: "0.5rem",
             }}
           >
-            <h4 style={{ fontSize: "0.82rem", color: "var(--accent-cyan)", textTransform: "uppercase", marginBottom: "0.6rem" }}>
-              Supervisory Review & Disposition (Human Examiner Final Decision)
-            </h4>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem", marginBottom: "0.65rem" }}>
+              <h4 style={{ fontSize: "0.82rem", color: "var(--accent-cyan)", textTransform: "uppercase", margin: 0, fontWeight: 700 }}>
+                Supervisory Review & Disposition (Human Examiner Final Decision)
+              </h4>
+              <span style={{ fontSize: "0.7rem", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                <ShieldCheck size={12} color="var(--accent-cyan)" /> Immutable Audit Trail Attributed
+              </span>
+            </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr auto", gap: "0.75rem", alignItems: "flex-end" }}>
-              <div>
-                <label style={{ display: "block", fontSize: "0.72rem", color: "var(--text-muted)", marginBottom: "0.25rem" }}>
-                  Supervisory Decision
-                </label>
-                <select
-                  value={decision}
-                  onChange={(e) => setDecision(e.target.value as ReviewDecisionState)}
-                  id="supervisory-decision-select"
+            {(() => {
+              const roleStyle = getRoleBadgeStyle(currentUser?.role);
+              return (
+                <div
                   style={{
-                    width: "100%",
-                    background: "var(--bg-input)",
-                    border: "1px solid var(--border-subtle)",
-                    borderRadius: "var(--radius-sm)",
-                    padding: "0.5rem",
-                    color: "#fff",
-                    fontSize: "0.8rem",
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr)) 1.8fr auto",
+                    gap: "0.75rem",
+                    alignItems: "flex-end",
                   }}
                 >
-                  <option value="CONFIRMED">CONFIRMED (Execution Gap Validated)</option>
-                  <option value="FALSE_POSITIVE">FALSE_POSITIVE (Authorized Deviation)</option>
-                  <option value="NEEDS_INVESTIGATION">NEEDS_INVESTIGATION (Request More Data)</option>
-                  <option value="INSUFFICIENT_EVIDENCE">INSUFFICIENT_EVIDENCE</option>
-                </select>
-              </div>
+                  {/* Participant / Inspector (Beside Supervisory Decision) */}
+                  <div>
+                    <label style={{ display: "block", fontSize: "0.72rem", color: "var(--text-muted)", marginBottom: "0.25rem", textTransform: "uppercase", fontWeight: 700 }}>
+                      Participant / Inspector
+                    </label>
+                    <div
+                      style={{
+                        background: "var(--bg-input)",
+                        border: "1px solid var(--border-subtle)",
+                        borderRadius: "var(--radius-sm)",
+                        padding: "0.45rem 0.65rem",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: "0.4rem",
+                        minHeight: "38px",
+                        boxSizing: "border-box",
+                      }}
+                      id="inspecting-participant-box"
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", minWidth: 0, flex: 1 }}>
+                        <User size={14} color={roleStyle.color} style={{ flexShrink: 0 }} />
+                        <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          <span
+                            style={{ fontSize: "0.78rem", color: "#fff", fontWeight: 600 }}
+                            title={currentUser?.full_name || currentUser?.username || "Authenticated Examiner"}
+                          >
+                            {currentUser?.full_name || currentUser?.username || "Authenticated Examiner"}
+                          </span>
+                          {currentUser?.username && currentUser.full_name && (
+                            <span style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginLeft: "0.3rem", fontFamily: "var(--font-mono)" }}>
+                              ({currentUser.username})
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {currentUser?.role && (
+                        <span
+                          style={{
+                            fontSize: "0.66rem",
+                            fontWeight: 700,
+                            padding: "0.12rem 0.45rem",
+                            borderRadius: "var(--radius-full)",
+                            background: roleStyle.bg,
+                            color: roleStyle.color,
+                            border: `1px solid ${roleStyle.border}`,
+                            letterSpacing: "0.02em",
+                            whiteSpace: "nowrap",
+                            flexShrink: 0,
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "0.2rem",
+                          }}
+                        >
+                          <ShieldCheck size={10} />
+                          {roleStyle.label}
+                        </span>
+                      )}
+                    </div>
+                  </div>
 
-              <div>
-                <label style={{ display: "block", fontSize: "0.72rem", color: "var(--text-muted)", marginBottom: "0.25rem" }}>
-                  Examiner Audit Notes & Action Order
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g., Scheduled on-site supervisory inspection of L1 alert closures with SOC leadership."
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  id="supervisory-notes-input"
-                  style={{
-                    width: "100%",
-                    background: "var(--bg-input)",
-                    border: "1px solid var(--border-subtle)",
-                    borderRadius: "var(--radius-sm)",
-                    padding: "0.5rem 0.75rem",
-                    color: "#fff",
-                    fontSize: "0.8rem",
-                  }}
-                />
-              </div>
+                  {/* Supervisory Decision */}
+                  <div>
+                    <label style={{ display: "block", fontSize: "0.72rem", color: "var(--text-muted)", marginBottom: "0.25rem", textTransform: "uppercase", fontWeight: 700 }}>
+                      Supervisory Decision
+                    </label>
+                    <select
+                      value={decision}
+                      onChange={(e) => setDecision(e.target.value as ReviewDecisionState)}
+                      id="supervisory-decision-select"
+                      style={{
+                        width: "100%",
+                        background: "var(--bg-input)",
+                        border: "1px solid var(--border-subtle)",
+                        borderRadius: "var(--radius-sm)",
+                        padding: "0.5rem",
+                        color: "#fff",
+                        fontSize: "0.8rem",
+                        minHeight: "38px",
+                        boxSizing: "border-box",
+                      }}
+                    >
+                      <option value="CONFIRMED">CONFIRMED (Execution Gap Validated)</option>
+                      <option value="FALSE_POSITIVE">FALSE_POSITIVE (Authorized Deviation)</option>
+                      <option value="NEEDS_INVESTIGATION">NEEDS_INVESTIGATION (Request More Data)</option>
+                      <option value="INSUFFICIENT_EVIDENCE">INSUFFICIENT_EVIDENCE</option>
+                    </select>
+                  </div>
 
-              <button
-                onClick={handleSubmitReview}
-                disabled={submitting}
-                className="btn-primary"
-                id="submit-review-btn"
-                style={{ padding: "0.5rem 1.1rem", whiteSpace: "nowrap", fontSize: "0.8rem" }}
-              >
-                <Send size={14} /> {submitting ? "Saving..." : "Submit Decision"}
-              </button>
-            </div>
+                  {/* Examiner Audit Notes & Action Order */}
+                  <div>
+                    <label style={{ display: "block", fontSize: "0.72rem", color: "var(--text-muted)", marginBottom: "0.25rem", textTransform: "uppercase", fontWeight: 700 }}>
+                      Examiner Audit Notes & Action Order
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g., Scheduled on-site supervisory inspection of L1 alert closures with SOC leadership."
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      id="supervisory-notes-input"
+                      style={{
+                        width: "100%",
+                        background: "var(--bg-input)",
+                        border: "1px solid var(--border-subtle)",
+                        borderRadius: "var(--radius-sm)",
+                        padding: "0.5rem 0.75rem",
+                        color: "#fff",
+                        fontSize: "0.8rem",
+                        minHeight: "38px",
+                        boxSizing: "border-box",
+                      }}
+                    />
+                  </div>
+
+                  {/* Submit Decision */}
+                  <button
+                    onClick={handleSubmitReview}
+                    disabled={submitting}
+                    className="btn-primary"
+                    id="submit-review-btn"
+                    style={{ padding: "0.5rem 1.1rem", whiteSpace: "nowrap", fontSize: "0.8rem", minHeight: "38px", boxSizing: "border-box", display: "flex", alignItems: "center", gap: "0.35rem" }}
+                  >
+                    <Send size={14} /> {submitting ? "Saving..." : "Submit Decision"}
+                  </button>
+                </div>
+              );
+            })()}
           </div>
 
         </div>

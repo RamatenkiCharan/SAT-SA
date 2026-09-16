@@ -37,6 +37,7 @@ from backend.repositories.base import (
     BaseSATRepository,
     DatasetMetadata,
     DatasetVersionMetadata,
+    EvidenceMessageRecord,
     ReviewDecisionRecord,
 )
 
@@ -56,6 +57,7 @@ class InMemoryRepository(BaseSATRepository):
         self.analysis_runs: dict[UUID, AnalysisRun] = {}
         self.data_quality_results: dict[UUID, DataQualityResult] = {}
         self.review_decisions: list[ReviewDecisionRecord] = []
+        self.evidence_messages: list[EvidenceMessageRecord] = []
         self.audit_events: list[AuditEvent] = []
         self.active_dataset_version_id: Optional[UUID] = None
         self.rulesets: dict[str, AnalyticalRuleset] = {
@@ -729,6 +731,57 @@ class InMemoryRepository(BaseSATRepository):
     def persist_peer_groups(self, version_id: UUID, groups: list[PeerGroup]) -> None:
         """Persists versioned peer groups for a dataset version."""
         self.peer_groups_by_version[version_id] = groups
+
+    def save_evidence_message(
+        self,
+        finding_id: UUID,
+        message: str,
+        sender_id: str,
+        sender_name: str,
+        sender_role: str,
+        evidence_id: Optional[str] = None,
+        recipient: Optional[str] = None,
+    ) -> EvidenceMessageRecord:
+        """Records an evidence inquiry / supervisory directive message and logs audit event."""
+        rec = EvidenceMessageRecord(
+            message_id=uuid4(),
+            finding_id=finding_id,
+            evidence_id=evidence_id,
+            sender_id=sender_id,
+            sender_name=sender_name,
+            sender_role=sender_role,
+            recipient=recipient or "SOC Leadership / Tier-2 Lead",
+            message=message.strip(),
+            sent_at=datetime.now(timezone.utc),
+        )
+        self.evidence_messages.append(rec)
+
+        self.record_audit_event(
+            user_id=sender_id,
+            username=sender_name,
+            action="EVIDENCE_MESSAGE_SENT",
+            target_type="evidence" if evidence_id else "finding",
+            target_id=str(evidence_id or finding_id),
+            details={
+                "finding_id": str(finding_id),
+                "evidence_id": evidence_id,
+                "message_id": str(rec.message_id),
+                "message_preview": rec.message[:120] + ("..." if len(rec.message) > 120 else ""),
+                "message_length": len(rec.message),
+                "recipient": rec.recipient,
+                "role": sender_role,
+                "user_role": sender_role,
+                "user_name": sender_name,
+            },
+        )
+        return rec
+
+    def get_evidence_messages(self, finding_id: Optional[UUID] = None) -> list[EvidenceMessageRecord]:
+        """Retrieves stored evidence messages."""
+        if finding_id:
+            return [m for m in self.evidence_messages if m.finding_id == finding_id]
+        return list(self.evidence_messages)
+
 
 
 

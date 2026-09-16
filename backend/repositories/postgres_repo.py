@@ -57,6 +57,7 @@ from backend.repositories.base import (
     BaseSATRepository,
     DatasetMetadata,
     DatasetVersionMetadata,
+    EvidenceMessageRecord,
     ReviewDecisionRecord,
 )
 
@@ -123,6 +124,7 @@ class PostgresRepository(BaseSATRepository):
         self.analysis_runs: dict[UUID, AnalysisRun] = {}
         self.data_quality_results: dict[UUID, DataQualityResult] = {}
         self.review_decisions: list[ReviewDecisionRecord] = []
+        self.evidence_messages: list[EvidenceMessageRecord] = []
         self.audit_events: list[AuditEvent] = []
         self.active_dataset_version_id: Optional[UUID] = None
 
@@ -406,6 +408,19 @@ class PostgresRepository(BaseSATRepository):
                 details_json TEXT
             );
             """,
+            """
+            CREATE TABLE IF NOT EXISTS evidence_messages (
+                message_id VARCHAR(64) PRIMARY KEY,
+                finding_id VARCHAR(64) NOT NULL,
+                evidence_id VARCHAR(128),
+                sender_id VARCHAR(64) NOT NULL,
+                sender_name VARCHAR(128) NOT NULL,
+                sender_role VARCHAR(64) NOT NULL,
+                recipient VARCHAR(128) NOT NULL,
+                message TEXT NOT NULL,
+                sent_at TIMESTAMP NOT NULL
+            );
+            """,
         ]
 
         with self.engine.begin() as conn:
@@ -482,6 +497,7 @@ class PostgresRepository(BaseSATRepository):
         self.analysis_runs.clear()
         self.data_quality_results.clear()
         self.review_decisions.clear()
+        self.evidence_messages.clear()
         self.audit_events.clear()
 
         with self.engine.connect() as conn:
@@ -2390,5 +2406,76 @@ class PostgresRepository(BaseSATRepository):
             evidence_records_count=len(finding.evidence_refs),
             evidence_refs=evidence_provenance_refs,
         )
+
+    def save_evidence_message(
+        self,
+        finding_id: UUID,
+        message: str,
+        sender_id: str,
+        sender_name: str,
+        sender_role: str,
+        evidence_id: Optional[str] = None,
+        recipient: Optional[str] = None,
+    ) -> EvidenceMessageRecord:
+        """Records an evidence inquiry / supervisory directive message and logs audit event."""
+        rec = EvidenceMessageRecord(
+            message_id=uuid4(),
+            finding_id=finding_id,
+            evidence_id=evidence_id,
+            sender_id=sender_id,
+            sender_name=sender_name,
+            sender_role=sender_role,
+            recipient=recipient or "SOC Leadership / Tier-2 Lead",
+            message=message.strip(),
+            sent_at=datetime.now(timezone.utc),
+        )
+        self.evidence_messages.append(rec)
+
+        with self.engine.connect() as conn:
+            conn.execute(
+                text("""
+                INSERT INTO evidence_messages (message_id, finding_id, evidence_id, sender_id, sender_name, sender_role, recipient, message, sent_at)
+                VALUES (:mid, :fid, :eid, :sid, :sname, :srole, :rec, :msg, :sat)
+                """),
+                {
+                    "mid": str(rec.message_id),
+                    "fid": str(rec.finding_id),
+                    "eid": rec.evidence_id,
+                    "sid": rec.sender_id,
+                    "sname": rec.sender_name,
+                    "srole": rec.sender_role,
+                    "rec": rec.recipient,
+                    "msg": rec.message,
+                    "sat": rec.sent_at.isoformat(),
+                },
+            )
+            conn.commit()
+
+        self.record_audit_event(
+            user_id=sender_id,
+            username=sender_name,
+            action="EVIDENCE_MESSAGE_SENT",
+            target_type="evidence" if evidence_id else "finding",
+            target_id=str(evidence_id or finding_id),
+            details={
+                "finding_id": str(finding_id),
+                "evidence_id": evidence_id,
+                "message_id": str(rec.message_id),
+                "message_preview": rec.message[:120] + ("..." if len(rec.message) > 120 else ""),
+                "message_length": len(rec.message),
+                "recipient": rec.recipient,
+                "role": sender_role,
+                "user_role": sender_role,
+                "user_name": sender_name,
+            },
+        )
+        return rec
+
+    def get_evidence_messages(self, finding_id: Optional[UUID] = None) -> list[EvidenceMessageRecord]:
+        """Retrieves stored evidence messages."""
+        if finding_id:
+            return [m for m in self.evidence_messages if m.finding_id == finding_id]
+        return list(self.evidence_messages)
+
 
 

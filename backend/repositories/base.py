@@ -75,6 +75,19 @@ class ReviewDecisionRecord:
     notes: Optional[str] = None
 
 
+@dataclass
+class EvidenceMessageRecord:
+    message_id: UUID
+    finding_id: UUID
+    evidence_id: Optional[str]
+    sender_id: str
+    sender_name: str
+    sender_role: str
+    recipient: str
+    message: str
+    sent_at: datetime
+
+
 class BaseSATRepository(ABC):
     """Abstract Base Class for all SAT-SA repository implementations."""
 
@@ -209,5 +222,25 @@ class BaseSATRepository(ABC):
     def persist_peer_groups(self, version_id: UUID, groups: list[PeerGroup]) -> None:
         """Persists versioned peer groups for a dataset version."""
         pass
+
+    @abstractmethod
+    def save_evidence_message(
+        self,
+        finding_id: UUID,
+        message: str,
+        sender_id: str,
+        sender_name: str,
+        sender_role: str,
+        evidence_id: Optional[str] = None,
+        recipient: Optional[str] = None,
+    ) -> EvidenceMessageRecord:
+        """Records an evidence inquiry / supervisory directive message and logs audit event."""
+        ...
+
+    @abstractmethod
+    def get_evidence_messages(self, finding_id: Optional[UUID] = None) -> list[EvidenceMessageRecord]:
+        """Retrieves stored evidence messages."""
+        ...
+
 
 

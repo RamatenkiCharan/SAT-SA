@@ -196,6 +196,16 @@ def get_finding_detail(
     }
 
 
+from pydantic import BaseModel, Field
+
+
+class EvidenceMessageRequest(BaseModel):
+    finding_id: Optional[UUID] = None
+    evidence_id: Optional[str] = None
+    message: str = Field(..., min_length=1, max_length=4000, description="Supervisory directive / message content")
+    recipient_role: Optional[str] = Field("SOC Leadership / Tier-2 Lead", description="Target recipient role")
+
+
 @router.get("/{finding_id}/provenance")
 def get_finding_provenance_endpoint(
     finding_id: UUID,
@@ -218,4 +228,64 @@ def get_finding_evidence(
     if not records:
         raise HTTPException(status_code=404, detail="Finding evidence not found.")
     return records
+
+
+@router.post("/{finding_id}/messages")
+def send_finding_evidence_message(
+    finding_id: UUID,
+    req: EvidenceMessageRequest,
+    repo: SATRepository = Depends(get_repository),
+    user: UserContext = Depends(require_analyst),
+):
+    finding = repo.get_finding_by_id(finding_id)
+    if not finding:
+        raise HTTPException(status_code=404, detail=f"Finding '{finding_id}' not found.")
+
+    if not req.message or not req.message.strip():
+        raise HTTPException(status_code=422, detail="Message content cannot be empty.")
+
+    msg_rec = repo.save_evidence_message(
+        finding_id=finding_id,
+        message=req.message,
+        sender_id=user.user_id,
+        sender_name=user.username,
+        sender_role=user.role,
+        evidence_id=req.evidence_id,
+        recipient=req.recipient_role,
+    )
+
+    return {
+        "status": "success",
+        "message_id": str(msg_rec.message_id),
+        "finding_id": str(msg_rec.finding_id),
+        "evidence_id": msg_rec.evidence_id,
+        "sender": msg_rec.sender_name,
+        "role": msg_rec.sender_role,
+        "recipient": msg_rec.recipient,
+        "sent_at": msg_rec.sent_at.isoformat(),
+        "message": msg_rec.message,
+    }
+
+
+@router.get("/{finding_id}/messages")
+def list_finding_evidence_messages(
+    finding_id: UUID,
+    repo: SATRepository = Depends(get_repository),
+    user: UserContext = Depends(require_analyst),
+):
+    messages = repo.get_evidence_messages(finding_id=finding_id)
+    return [
+        {
+            "message_id": str(m.message_id),
+            "finding_id": str(m.finding_id),
+            "evidence_id": m.evidence_id,
+            "sender": m.sender_name,
+            "role": m.sender_role,
+            "recipient": m.recipient,
+            "sent_at": m.sent_at.isoformat(),
+            "message": m.message,
+        }
+        for m in messages
+    ]
+
 

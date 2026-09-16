@@ -50,126 +50,126 @@ export const ValidationView: React.FC = () => {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
       {/* Header Info */}
-      <div className="glass-card" style={{ padding: "1.5rem" }}>
+      <div className="glass-card hud-corner" style={{ padding: "1.65rem" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem" }}>
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.35rem" }}>
               <Award size={22} color="var(--accent-cyan)" />
-              <h2 style={{ fontSize: "1.25rem", color: "#fff", margin: 0 }}>
+              <h2 style={{ fontSize: "1.25rem", color: "#fff", margin: 0, fontWeight: 700 }}>
                 Final SAT-SA Validation Protocol & Review Yield Benchmark
               </h2>
               <span className="badge badge-emerald" style={{ fontSize: "0.72rem" }}>
                 SRS §19.4 & §24 COMPLIANT
               </span>
             </div>
-            <p style={{ fontSize: "0.82rem", color: "var(--text-muted)", marginTop: "0.35rem", marginBottom: 0 }}>
+            <p style={{ fontSize: "0.82rem", color: "#64748b", margin: 0 }}>
               Independent evaluation across <strong>Tuning</strong> and <strong>Held-Out</strong> scenario splits ({protoReport?.held_out_ratio_percentage ?? 33.3}% held-out, ≥20% requirement) under the strict <strong>Generator/Detector Independence Protocol</strong>.
             </p>
           </div>
-          <button onClick={loadValidation} className="btn-secondary" style={{ fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+          <button onClick={loadValidation} id="re-run-protocol-btn" className="btn-secondary" style={{ fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "0.4rem" }}>
             <RefreshCw size={14} className={loading ? "spin" : ""} /> Re-Run Protocol
           </button>
         </div>
       </div>
 
       {loading ? (
-        <div className="glass-card" style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)" }}>
-          <Activity size={24} style={{ margin: "0 auto 1rem", animation: "spin 2s linear infinite" }} />
+        <div className="glass-card" style={{ padding: "4rem", textAlign: "center", color: "#64748b" }}>
+          <Activity size={28} style={{ margin: "0 auto 1rem", animation: "spin 2s linear infinite", color: "var(--accent-cyan)" }} />
           Executing independent ground-truth scenario validation runs across 8 operational categories...
         </div>
       ) : data ? (
         <>
           {/* Key Metric Highlights Grid */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "1rem" }}>
+          <div className="stats-grid-4">
             <div
-              className="glass-card"
+              className="glass-card hud-corner"
               style={{
-                padding: "1.25rem",
-                background: "linear-gradient(135deg, rgba(0, 240, 255, 0.1) 0%, rgba(15, 23, 42, 0.8) 100%)",
-                border: "1px solid rgba(0, 240, 255, 0.3)",
+                padding: "1.35rem",
+                background: "linear-gradient(135deg, rgba(0, 216, 246, 0.08) 0%, rgba(15, 23, 42, 0.85) 100%)",
+                border: "1px solid rgba(0, 216, 246, 0.35)",
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.4rem" }}>
                 <Zap size={16} color="var(--accent-cyan)" />
-                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 600 }}>WORKLOAD REDUCTION</span>
+                <span style={{ fontSize: "0.74rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>WORKLOAD REDUCTION</span>
               </div>
-              <div style={{ fontSize: "2rem", fontWeight: 800, color: "var(--accent-cyan)", fontFamily: "var(--font-mono)" }}>
+              <div style={{ fontSize: "2.1rem", fontWeight: 800, color: "var(--accent-cyan)", fontFamily: "var(--font-mono)" }}>
                 {effReport?.cross_split_summary.average_workload_reduction_percentage ?? 95.8}%
               </div>
-              <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "0.25rem", margin: 0 }}>
+              <p style={{ fontSize: "0.75rem", color: "#94a3b8", marginTop: "0.3rem", margin: 0 }}>
                 Analyst effort reduction vs raw case review
               </p>
             </div>
 
             <div
-              className="glass-card"
+              className="glass-card hud-corner"
               style={{
-                padding: "1.25rem",
-                background: "linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(15, 23, 42, 0.8) 100%)",
-                border: "1px solid rgba(16, 185, 129, 0.3)",
+                padding: "1.35rem",
+                background: "linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(15, 23, 42, 0.85) 100%)",
+                border: "1px solid rgba(16, 185, 129, 0.35)",
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.4rem" }}>
                 <TrendingUp size={16} color="var(--accent-emerald)" />
-                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 600 }}>EFFICIENCY SPEEDUP</span>
+                <span style={{ fontSize: "0.74rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>EFFICIENCY SPEEDUP</span>
               </div>
-              <div style={{ fontSize: "2rem", fontWeight: 800, color: "var(--accent-emerald)", fontFamily: "var(--font-mono)" }}>
+              <div style={{ fontSize: "2.1rem", fontWeight: 800, color: "var(--accent-emerald)", fontFamily: "var(--font-mono)" }}>
                 {effReport?.cross_split_summary.average_efficiency_multiplier_speedup ?? 24.1}x
               </div>
-              <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "0.25rem", margin: 0 }}>
+              <p style={{ fontSize: "0.75rem", color: "#94a3b8", marginTop: "0.3rem", margin: 0 }}>
                 Faster discovery of all true weaknesses
               </p>
             </div>
 
             <div
-              className="glass-card"
+              className="glass-card hud-corner"
               style={{
-                padding: "1.25rem",
-                background: "linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, rgba(15, 23, 42, 0.8) 100%)",
-                border: "1px solid rgba(168, 85, 247, 0.3)",
+                padding: "1.35rem",
+                background: "linear-gradient(135deg, rgba(168, 85, 247, 0.08) 0%, rgba(15, 23, 42, 0.85) 100%)",
+                border: "1px solid rgba(168, 85, 247, 0.35)",
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.4rem" }}>
                 <Clock size={16} color="var(--accent-purple)" />
-                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 600 }}>HELD-OUT RATIO</span>
+                <span style={{ fontSize: "0.74rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>HELD-OUT RATIO</span>
               </div>
-              <div style={{ fontSize: "2rem", fontWeight: 800, color: "var(--accent-purple)", fontFamily: "var(--font-mono)" }}>
+              <div style={{ fontSize: "2.1rem", fontWeight: 800, color: "var(--accent-purple)", fontFamily: "var(--font-mono)" }}>
                 {protoReport?.held_out_ratio_percentage ?? 33.3}%
               </div>
-              <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "0.25rem", margin: 0 }}>
+              <p style={{ fontSize: "0.75rem", color: "#94a3b8", marginTop: "0.3rem", margin: 0 }}>
                 5 of 15 scenarios held out (Req: ≥20%)
               </p>
             </div>
 
             <div
-              className="glass-card"
+              className="glass-card hud-corner"
               style={{
-                padding: "1.25rem",
-                background: "linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(15, 23, 42, 0.8) 100%)",
-                border: "1px solid rgba(245, 158, 11, 0.3)",
+                padding: "1.35rem",
+                background: "linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(15, 23, 42, 0.85) 100%)",
+                border: "1px solid rgba(245, 158, 11, 0.35)",
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.4rem" }}>
                 <ShieldAlert size={16} color="var(--accent-amber)" />
-                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 600 }}>GENERALIZATION</span>
+                <span style={{ fontSize: "0.74rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>GENERALIZATION</span>
               </div>
-              <div style={{ fontSize: "2rem", fontWeight: 800, color: "var(--accent-amber)", fontFamily: "var(--font-mono)" }}>
+              <div style={{ fontSize: "2.1rem", fontWeight: 800, color: "var(--accent-amber)", fontFamily: "var(--font-mono)" }}>
                 100% RECALL
               </div>
-              <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "0.25rem", margin: 0 }}>
+              <p style={{ fontSize: "0.75rem", color: "#94a3b8", marginTop: "0.3rem", margin: 0 }}>
                 0% degradation on unseen held-out set
               </p>
             </div>
           </div>
 
           {/* Performance Comparison: Tuning vs Held-Out Splits */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
+          <div className="stats-grid-2">
             {/* Tuning Set Card */}
             <div className="glass-card" style={{ padding: "1.5rem" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "0.5rem" }}>
                 <div>
-                  <h3 style={{ fontSize: "1.05rem", color: "#fff", margin: 0 }}>Tuning Scenario Split</h3>
-                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                  <h3 style={{ fontSize: "1.05rem", color: "#fff", margin: 0, fontWeight: 700 }}>Tuning Scenario Split</h3>
+                  <span style={{ fontSize: "0.75rem", color: "#64748b" }}>
                     10 Scenarios · Power, Banking, Telecom, Transport, Healthcare
                   </span>
                 </div>
@@ -177,42 +177,42 @@ export const ValidationView: React.FC = () => {
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "1rem" }}>
-                <div style={{ background: "rgba(15, 23, 42, 0.6)", padding: "0.85rem", borderRadius: "var(--radius-sm)" }}>
-                  <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>Recall (Weakness Discovery)</span>
-                  <div style={{ fontSize: "1.6rem", fontWeight: 800, color: "var(--accent-emerald)" }}>
+                <div style={{ background: "rgba(15, 23, 42, 0.65)", padding: "0.85rem", borderRadius: "var(--radius-sm)" }}>
+                  <span style={{ fontSize: "0.72rem", color: "#64748b" }}>Recall (Weakness Discovery)</span>
+                  <div style={{ fontSize: "1.6rem", fontWeight: 800, color: "var(--accent-emerald)", fontFamily: "var(--font-mono)" }}>
                     {(data.tuning_split.recall * 100).toFixed(1)}%
                   </div>
                 </div>
 
-                <div style={{ background: "rgba(15, 23, 42, 0.6)", padding: "0.85rem", borderRadius: "var(--radius-sm)" }}>
-                  <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>Precision (Triage Purity)</span>
-                  <div style={{ fontSize: "1.6rem", fontWeight: 800, color: "#fff" }}>
+                <div style={{ background: "rgba(15, 23, 42, 0.65)", padding: "0.85rem", borderRadius: "var(--radius-sm)" }}>
+                  <span style={{ fontSize: "0.72rem", color: "#64748b" }}>Precision (Triage Purity)</span>
+                  <div style={{ fontSize: "1.6rem", fontWeight: 800, color: "#fff", fontFamily: "var(--font-mono)" }}>
                     {(data.tuning_split.precision * 100).toFixed(1)}%
                   </div>
                 </div>
 
-                <div style={{ background: "rgba(15, 23, 42, 0.6)", padding: "0.85rem", borderRadius: "var(--radius-sm)" }}>
-                  <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>F1 Harmonic Score</span>
-                  <div style={{ fontSize: "1.6rem", fontWeight: 800, color: "var(--accent-amber)" }}>
+                <div style={{ background: "rgba(15, 23, 42, 0.65)", padding: "0.85rem", borderRadius: "var(--radius-sm)" }}>
+                  <span style={{ fontSize: "0.72rem", color: "#64748b" }}>F1 Harmonic Score</span>
+                  <div style={{ fontSize: "1.6rem", fontWeight: 800, color: "var(--accent-amber)", fontFamily: "var(--font-mono)" }}>
                     {(data.tuning_split.f1_score * 100).toFixed(1)}%
                   </div>
                 </div>
 
-                <div style={{ background: "rgba(15, 23, 42, 0.6)", padding: "0.85rem", borderRadius: "var(--radius-sm)" }}>
-                  <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>False-Positive Rate (FPR)</span>
-                  <div style={{ fontSize: "1.6rem", fontWeight: 800, color: "var(--accent-cyan)" }}>
+                <div style={{ background: "rgba(15, 23, 42, 0.65)", padding: "0.85rem", borderRadius: "var(--radius-sm)" }}>
+                  <span style={{ fontSize: "0.72rem", color: "#64748b" }}>False-Positive Rate (FPR)</span>
+                  <div style={{ fontSize: "1.6rem", fontWeight: 800, color: "var(--accent-cyan)", fontFamily: "var(--font-mono)" }}>
                     {((data.tuning_split.false_positive_rate ?? 0.0) * 100).toFixed(1)}%
                   </div>
                 </div>
               </div>
 
               {/* Confusion Matrix Mini-Table */}
-              <div style={{ background: "rgba(0,0,0,0.2)", padding: "0.75rem", borderRadius: "var(--radius-sm)", fontSize: "0.78rem" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", color: "var(--text-muted)", marginBottom: "0.3rem" }}>
+              <div style={{ background: "rgba(0,0,0,0.3)", padding: "0.75rem 1rem", borderRadius: "var(--radius-sm)", fontSize: "0.78rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", color: "#64748b", marginBottom: "0.3rem" }}>
                   <span>Confusion Matrix:</span>
                   <span>Total Hypotheses: {(data.tuning_split.true_positives + data.tuning_split.false_negatives + data.tuning_split.false_positives + (data.tuning_split.true_negatives ?? 33))}</span>
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-around", fontWeight: 700 }}>
+                <div style={{ display: "flex", justifyContent: "space-around", fontWeight: 700, fontFamily: "var(--font-mono)" }}>
                   <span style={{ color: "var(--accent-emerald)" }}>TP: {data.tuning_split.true_positives}</span>
                   <span style={{ color: "var(--accent-amber)" }}>FP: {data.tuning_split.false_positives}</span>
                   <span style={{ color: "var(--accent-cyan)" }}>TN: {data.tuning_split.true_negatives ?? 33}</span>
@@ -223,10 +223,10 @@ export const ValidationView: React.FC = () => {
 
             {/* Held-Out Set Card */}
             <div className="glass-card" style={{ padding: "1.5rem" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "0.5rem" }}>
                 <div>
-                  <h3 style={{ fontSize: "1.05rem", color: "#fff", margin: 0 }}>Held-Out Scenario Split</h3>
-                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                  <h3 style={{ fontSize: "1.05rem", color: "#fff", margin: 0, fontWeight: 700 }}>Held-Out Scenario Split</h3>
+                  <span style={{ fontSize: "0.75rem", color: "#64748b" }}>
                     5 Scenarios · Zero detector tuning / hyperparameter leakage
                   </span>
                 </div>
@@ -234,42 +234,42 @@ export const ValidationView: React.FC = () => {
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "1rem" }}>
-                <div style={{ background: "rgba(15, 23, 42, 0.6)", padding: "0.85rem", borderRadius: "var(--radius-sm)" }}>
-                  <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>Held-Out Recall</span>
-                  <div style={{ fontSize: "1.6rem", fontWeight: 800, color: "var(--accent-emerald)" }}>
+                <div style={{ background: "rgba(15, 23, 42, 0.65)", padding: "0.85rem", borderRadius: "var(--radius-sm)" }}>
+                  <span style={{ fontSize: "0.72rem", color: "#64748b" }}>Held-Out Recall</span>
+                  <div style={{ fontSize: "1.6rem", fontWeight: 800, color: "var(--accent-emerald)", fontFamily: "var(--font-mono)" }}>
                     {(data.held_out_split.recall * 100).toFixed(1)}%
                   </div>
                 </div>
 
-                <div style={{ background: "rgba(15, 23, 42, 0.6)", padding: "0.85rem", borderRadius: "var(--radius-sm)" }}>
-                  <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>Held-Out Precision</span>
-                  <div style={{ fontSize: "1.6rem", fontWeight: 800, color: "#fff" }}>
+                <div style={{ background: "rgba(15, 23, 42, 0.65)", padding: "0.85rem", borderRadius: "var(--radius-sm)" }}>
+                  <span style={{ fontSize: "0.72rem", color: "#64748b" }}>Held-Out Precision</span>
+                  <div style={{ fontSize: "1.6rem", fontWeight: 800, color: "#fff", fontFamily: "var(--font-mono)" }}>
                     {(data.held_out_split.precision * 100).toFixed(1)}%
                   </div>
                 </div>
 
-                <div style={{ background: "rgba(15, 23, 42, 0.6)", padding: "0.85rem", borderRadius: "var(--radius-sm)" }}>
-                  <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>Held-Out F1 Score</span>
-                  <div style={{ fontSize: "1.6rem", fontWeight: 800, color: "var(--accent-amber)" }}>
+                <div style={{ background: "rgba(15, 23, 42, 0.65)", padding: "0.85rem", borderRadius: "var(--radius-sm)" }}>
+                  <span style={{ fontSize: "0.72rem", color: "#64748b" }}>Held-Out F1 Score</span>
+                  <div style={{ fontSize: "1.6rem", fontWeight: 800, color: "var(--accent-amber)", fontFamily: "var(--font-mono)" }}>
                     {(data.held_out_split.f1_score * 100).toFixed(1)}%
                   </div>
                 </div>
 
-                <div style={{ background: "rgba(15, 23, 42, 0.6)", padding: "0.85rem", borderRadius: "var(--radius-sm)" }}>
-                  <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>Held-Out FPR</span>
-                  <div style={{ fontSize: "1.6rem", fontWeight: 800, color: "var(--accent-cyan)" }}>
+                <div style={{ background: "rgba(15, 23, 42, 0.65)", padding: "0.85rem", borderRadius: "var(--radius-sm)" }}>
+                  <span style={{ fontSize: "0.72rem", color: "#64748b" }}>Held-Out FPR</span>
+                  <div style={{ fontSize: "1.6rem", fontWeight: 800, color: "var(--accent-cyan)", fontFamily: "var(--font-mono)" }}>
                     {((data.held_out_split.false_positive_rate ?? 0.0) * 100).toFixed(1)}%
                   </div>
                 </div>
               </div>
 
               {/* Confusion Matrix Mini-Table */}
-              <div style={{ background: "rgba(0,0,0,0.2)", padding: "0.75rem", borderRadius: "var(--radius-sm)", fontSize: "0.78rem" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", color: "var(--text-muted)", marginBottom: "0.3rem" }}>
+              <div style={{ background: "rgba(0,0,0,0.3)", padding: "0.75rem 1rem", borderRadius: "var(--radius-sm)", fontSize: "0.78rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", color: "#64748b", marginBottom: "0.3rem" }}>
                   <span>Confusion Matrix:</span>
                   <span>Total Hypotheses: {(data.held_out_split.true_positives + data.held_out_split.false_negatives + data.held_out_split.false_positives + (data.held_out_split.true_negatives ?? 16))}</span>
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-around", fontWeight: 700 }}>
+                <div style={{ display: "flex", justifyContent: "space-around", fontWeight: 700, fontFamily: "var(--font-mono)" }}>
                   <span style={{ color: "var(--accent-emerald)" }}>TP: {data.held_out_split.true_positives}</span>
                   <span style={{ color: "var(--accent-amber)" }}>FP: {data.held_out_split.false_positives}</span>
                   <span style={{ color: "var(--accent-cyan)" }}>TN: {data.held_out_split.true_negatives ?? 16}</span>
@@ -280,11 +280,11 @@ export const ValidationView: React.FC = () => {
           </div>
 
           {/* 8 Mandatory Scenario Categories Grid (SRS §19.4) */}
-          <div className="glass-card" style={{ padding: "1.5rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+          <div className="glass-card" style={{ padding: "1.65rem" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.15rem", flexWrap: "wrap", gap: "0.5rem" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                 <Layers size={18} color="var(--accent-cyan)" />
-                <h3 style={{ fontSize: "1.05rem", color: "#fff", margin: 0 }}>
+                <h3 style={{ fontSize: "1.05rem", color: "#fff", margin: 0, fontWeight: 700 }}>
                   Mandatory Scenario Category Audit (8 of 8 Verified in {activeSplitTab === "tuning" ? "Tuning Split" : "Held-Out Split"})
                 </h3>
               </div>
@@ -293,7 +293,7 @@ export const ValidationView: React.FC = () => {
               </span>
             </div>
             
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.75rem" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "0.85rem" }}>
               {[
                 { name: "normal behavior", type: "clean", desc: "Baseline healthy SOC, 0 defects" },
                 { name: "fast closure defect", type: "defect", desc: "Rapid closure SLA gaming" },
@@ -310,17 +310,17 @@ export const ValidationView: React.FC = () => {
                   <div
                     key={cat.name}
                     style={{
-                      background: "rgba(15, 23, 42, 0.6)",
+                      background: "rgba(15, 23, 42, 0.65)",
                       border: "1px solid rgba(255, 255, 255, 0.08)",
                       borderRadius: "var(--radius-sm)",
-                      padding: "0.85rem",
+                      padding: "0.95rem",
                     }}
                   >
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.3rem" }}>
-                      <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#fff" }}>{cat.name}</span>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.35rem" }}>
+                      <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#fff" }}>{cat.name}</span>
                       <CheckCircle2 size={14} color="#34d399" />
                     </div>
-                    <p style={{ fontSize: "0.72rem", color: "var(--text-muted)", margin: "0 0 0.4rem 0" }}>
+                    <p style={{ fontSize: "0.74rem", color: "#94a3b8", margin: "0 0 0.5rem 0", lineHeight: 1.35 }}>
                       {cat.desc}
                     </p>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -328,7 +328,7 @@ export const ValidationView: React.FC = () => {
                         {isDefect ? "DEFECT CAPTURED" : "FALSE POSITIVES = 0"}
                       </span>
                       {catPerf && (
-                        <span style={{ fontSize: "0.7rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
+                        <span style={{ fontSize: "0.7rem", color: "#64748b", fontFamily: "var(--font-mono)" }}>
                           TP:{catPerf.tp} TN:{catPerf.tn}
                         </span>
                       )}
@@ -341,13 +341,13 @@ export const ValidationView: React.FC = () => {
 
           {/* Detailed Prioritized Review Yield Table */}
           {currentEffSplit && (
-            <div className="glass-card" style={{ padding: "1.5rem" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "0.75rem" }}>
+            <div className="glass-card" style={{ padding: "1.65rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.15rem", flexWrap: "wrap", gap: "0.75rem" }}>
                 <div>
-                  <h3 style={{ fontSize: "1.05rem", color: "#fff", margin: 0 }}>
+                  <h3 style={{ fontSize: "1.05rem", color: "#fff", margin: 0, fontWeight: 700 }}>
                     Prioritized Review Progression & Yield Curve
                   </h3>
-                  <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "0.2rem", margin: 0 }}>
+                  <p style={{ fontSize: "0.8rem", color: "#64748b", marginTop: "0.2rem", margin: 0 }}>
                     Step-by-step audit progression demonstrating time saved and precision at each review cutoff.
                   </p>
                 </div>
@@ -355,15 +355,17 @@ export const ValidationView: React.FC = () => {
                 <div style={{ display: "flex", gap: "0.5rem" }}>
                   <button
                     onClick={() => setActiveSplitTab("tuning")}
+                    id="tab-tuning-split"
                     className={activeSplitTab === "tuning" ? "btn-primary" : "btn-secondary"}
-                    style={{ fontSize: "0.75rem", padding: "0.4rem 0.8rem" }}
+                    style={{ fontSize: "0.75rem", padding: "0.4rem 0.85rem" }}
                   >
                     Tuning Split (10 Scenarios)
                   </button>
                   <button
                     onClick={() => setActiveSplitTab("held_out")}
+                    id="tab-held-out-split"
                     className={activeSplitTab === "held_out" ? "btn-primary" : "btn-secondary"}
-                    style={{ fontSize: "0.75rem", padding: "0.4rem 0.8rem" }}
+                    style={{ fontSize: "0.75rem", padding: "0.4rem 0.85rem" }}
                   >
                     Held-Out Split (5 Scenarios)
                   </button>
@@ -373,7 +375,7 @@ export const ValidationView: React.FC = () => {
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.82rem" }}>
                   <thead>
-                    <tr style={{ borderBottom: "1px solid var(--border-subtle)", color: "var(--text-muted)", textAlign: "left" }}>
+                    <tr style={{ borderBottom: "1px solid var(--border-subtle)", color: "#64748b", textAlign: "left" }}>
                       <th style={{ padding: "0.6rem 0.75rem" }}>Rank</th>
                       <th style={{ padding: "0.6rem 0.75rem" }}>Entity Name</th>
                       <th style={{ padding: "0.6rem 0.75rem" }}>Detector / Finding Type</th>
@@ -423,10 +425,10 @@ export const ValidationView: React.FC = () => {
                         <td style={{ padding: "0.6rem 0.75rem", fontWeight: 800, color: "var(--accent-cyan)", fontFamily: "var(--font-mono)" }}>
                           {step.yield_percentage}%
                         </td>
-                        <td style={{ padding: "0.6rem 0.75rem", color: "var(--text-secondary)" }}>
+                        <td style={{ padding: "0.6rem 0.75rem", color: "#94a3b8" }}>
                           {step.assisted_time_minutes} min
                         </td>
-                        <td style={{ padding: "0.6rem 0.75rem", color: "var(--text-muted)" }}>
+                        <td style={{ padding: "0.6rem 0.75rem", color: "#64748b" }}>
                           {step.baseline_equivalent_time_minutes} min
                         </td>
                       </tr>
@@ -440,12 +442,12 @@ export const ValidationView: React.FC = () => {
           {/* Academic & Configuration Disclosure */}
           <div
             style={{
-              padding: "1.25rem",
-              background: "rgba(30, 41, 59, 0.4)",
+              padding: "1.35rem",
+              background: "rgba(15, 23, 42, 0.65)",
               borderRadius: "var(--radius-md)",
               border: "1px solid var(--border-subtle)",
               fontSize: "0.78rem",
-              color: "var(--text-muted)",
+              color: "#64748b",
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
@@ -454,12 +456,12 @@ export const ValidationView: React.FC = () => {
             }}
           >
             <div>
-              <strong>Non-Circular Validation & Generalization Protocol: </strong>
+              <strong style={{ color: "#f8fafc" }}>Non-Circular Validation & Generalization Protocol: </strong>
               {data.disclosure} Ground-truth anomaly injection parameters were strictly separated from detector formulas.
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
               <FileText size={14} color="var(--accent-cyan)" />
-              <span>Config Stored: <code>results/final_validation_protocol.json</code></span>
+              <span>Config Stored: <code style={{ color: "var(--accent-cyan)" }}>results/final_validation_protocol.json</code></span>
             </div>
           </div>
         </>
@@ -467,3 +469,4 @@ export const ValidationView: React.FC = () => {
     </div>
   );
 };
+

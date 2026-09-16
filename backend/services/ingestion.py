@@ -70,15 +70,15 @@ class FileFormat(str, Enum):
 
 # Canonical Schema Field Aliases
 _ALERT_FIELD_ALIASES = {
-    "alert_id": ["alert_id", "id", "alertid", "alert_identifier"],
-    "cse_id": ["cse_id", "cse", "cseid", "entity_id", "entityid"],
-    "asset_id": ["asset_id", "assetid", "host_id", "target_asset", "target_id"],
-    "reporting_period_id": ["reporting_period_id", "reportingperiodid", "period_id", "periodid"],
-    "event_time": ["event_time", "eventtime", "timestamp", "event_timestamp", "time"],
-    "severity": ["severity", "sev", "priority"],
-    "alert_category": ["alert_category", "alertcategory", "category", "type", "alert_type"],
-    "source": ["source", "src", "log_source"],
-    "status": ["status", "state", "alert_status"],
+    "alert_id": ["alert_id", "id", "alertid", "alert_identifier", "incident_id", "ticket_id", "event_id", "alert_key"],
+    "cse_id": ["cse_id", "cse", "cseid", "entity_id", "entityid", "organization_id", "org_id", "tenant_id", "company_id"],
+    "asset_id": ["asset_id", "assetid", "host_id", "target_asset", "target_id", "hostname", "device_id", "ip_address", "ip", "asset", "host"],
+    "reporting_period_id": ["reporting_period_id", "reportingperiodid", "period_id", "periodid", "quarter", "period"],
+    "event_time": ["event_time", "eventtime", "timestamp", "event_timestamp", "time", "created_at", "occurred_at", "date", "datetime", "start_time", "log_time", "alert_time", "created_time"],
+    "severity": ["severity", "sev", "priority", "criticality", "urgency", "impact", "level", "alert_severity", "severity_level"],
+    "alert_category": ["alert_category", "alertcategory", "category", "type", "alert_type", "attack_type", "rule_name", "signature", "threat_type", "description", "title", "name", "event_type", "alert_name", "threat_name"],
+    "source": ["source", "src", "log_source", "sensor", "tool", "product", "detector", "vendor", "origin", "datasource", "data_source", "source_type"],
+    "status": ["status", "state", "alert_status", "alert_state", "disposition", "resolution", "ticket_status", "incident_status", "stage", "lifecycle_status", "closure_status", "outcome", "action_status", "current_status", "alertstatus", "alertstate"],
 }
 
 _CSE_FIELD_ALIASES = {
@@ -439,31 +439,76 @@ def validate_and_canonicalize_bundle(
         if unknown:
             warnings.append(f"Alert Row {idx + 1}: unmapped columns {unknown}")
 
-        # Required fields validation
-        if "severity" not in mapped or not mapped["severity"]:
-            row_reasons.append("Missing required field 'severity'")
-        if "alert_category" not in mapped or not mapped["alert_category"]:
-            row_reasons.append("Missing required field 'alert_category'")
-        if "source" not in mapped or not mapped["source"]:
-            row_reasons.append("Missing required field 'source'")
-        if "status" not in mapped or not mapped["status"]:
-            row_reasons.append("Missing required field 'status'")
-        if "event_time" not in mapped or not mapped["event_time"]:
-            row_reasons.append("Missing required field 'event_time'")
+        # 1. Severity Validation & Normalization
+        sev_raw: Optional[str] = None
+        sev_val = str(mapped.get("severity", "")).strip() if "severity" in mapped and mapped["severity"] is not None else ""
+        if sev_val:
+            sev_clean = sev_val.upper().replace("-", "_").replace(" ", "_")
+            if sev_clean in Severity.__members__:
+                sev_raw = sev_clean
+            elif sev_clean in {"1", "CRIT", "CRITICAL", "FATAL", "EMERGENCY"}:
+                sev_raw = "CRITICAL"
+            elif sev_clean in {"2", "HIGH", "MAJOR", "SEVERE"}:
+                sev_raw = "HIGH"
+            elif sev_clean in {"3", "MED", "MEDIUM", "MODERATE", "WARN", "WARNING"}:
+                sev_raw = "MEDIUM"
+            elif sev_clean in {"4", "LOW", "MINOR"}:
+                sev_raw = "LOW"
+            elif sev_clean in {"5", "INFO", "INFORMATIONAL", "DEBUG"}:
+                sev_raw = "INFO"
+            else:
+                row_reasons.append(f"Invalid severity '{sev_val}'. Expected {list(Severity.__members__.keys())}")
+        else:
+            sev_raw = "MEDIUM"
+            warnings.append(f"Alert Row {idx + 1}: field 'severity' not provided; defaulted to 'MEDIUM'.")
 
-        # Enum & Type validation
-        sev_raw = str(mapped.get("severity", "")).upper()
-        if sev_raw and sev_raw not in Severity.__members__:
-            row_reasons.append(f"Invalid severity '{sev_raw}'. Expected {list(Severity.__members__.keys())}")
+        # 2. Status Validation & Normalization
+        stat_raw: Optional[str] = None
+        stat_val = str(mapped.get("status", "")).strip() if "status" in mapped and mapped["status"] is not None else ""
+        if stat_val:
+            stat_clean = stat_val.upper().replace("-", "_").replace(" ", "_")
+            if stat_clean in AlertStatus.__members__:
+                stat_raw = stat_clean
+            elif stat_clean in {"CLOSED", "RESOLVED", "DISMISSED", "AUTO_CLOSED", "DONE", "COMPLETED", "TRUE_POSITIVE", "FALSE_POSITIVE"}:
+                stat_raw = "CLOSED"
+            elif stat_clean in {"INVESTIGATING", "IN_PROGRESS", "TRIAGED", "ANALYZING", "UNDER_REVIEW", "ASSIGNED"}:
+                stat_raw = "INVESTIGATING"
+            elif stat_clean in {"ESCALATED", "ESCALATE", "TIER2", "L2", "TIER3", "L3"}:
+                stat_raw = "ESCALATED"
+            elif stat_clean in {"OPEN", "NEW", "ACTIVE", "PENDING", "UNASSIGNED", "TRIGGERED"}:
+                stat_raw = "OPEN"
+            elif stat_clean in {"REOPENED", "RE_OPENED"}:
+                stat_raw = "REOPENED"
+            else:
+                row_reasons.append(f"Invalid status '{stat_val}'. Expected {list(AlertStatus.__members__.keys())}")
+        else:
+            # Missing status column: infer CLOSED if closure indicators exist, otherwise OPEN
+            if any(k in raw_row for k in ("closed_at", "closure_time", "ended_at", "resolution", "disposition")):
+                stat_raw = "CLOSED"
+            else:
+                stat_raw = "OPEN"
+            warnings.append(f"Alert Row {idx + 1}: field 'status' not provided; defaulted to '{stat_raw}'.")
 
-        stat_raw = str(mapped.get("status", "")).upper()
-        if stat_raw and stat_raw not in AlertStatus.__members__:
-            row_reasons.append(f"Invalid status '{stat_raw}'. Expected {list(AlertStatus.__members__.keys())}")
+        # 3. Alert Category & Source Fallbacks
+        cat_val = str(mapped.get("alert_category", "")).strip() if "alert_category" in mapped and mapped["alert_category"] is not None else ""
+        if not cat_val:
+            cat_val = "SECURITY_EVENT"
+            warnings.append(f"Alert Row {idx + 1}: field 'alert_category' not provided; defaulted to 'SECURITY_EVENT'.")
 
-        # Date validation
-        parsed_dt, dt_err = _validate_datetime(mapped.get("event_time"))
-        if dt_err and "event_time" in mapped and mapped["event_time"]:
-            row_reasons.append(dt_err)
+        src_val = str(mapped.get("source", "")).strip() if "source" in mapped and mapped["source"] is not None else ""
+        if not src_val:
+            src_val = "SIEM_INGEST"
+            warnings.append(f"Alert Row {idx + 1}: field 'source' not provided; defaulted to 'SIEM_INGEST'.")
+
+        # 4. Event Time & Date validation
+        parsed_dt: Optional[datetime] = None
+        if "event_time" in mapped and mapped["event_time"]:
+            parsed_dt, dt_err = _validate_datetime(mapped.get("event_time"))
+            if dt_err:
+                row_reasons.append(dt_err)
+        else:
+            parsed_dt = now
+            warnings.append(f"Alert Row {idx + 1}: field 'event_time' not provided; defaulted to ingestion timestamp.")
 
         # Duplicate identifier check
         alert_id = _parse_uuid(mapped.get("alert_id")) if "alert_id" in mapped and mapped["alert_id"] else uuid4()
@@ -471,7 +516,7 @@ def validate_and_canonicalize_bundle(
             row_reasons.append(f"Duplicate alert identifier: '{alert_id}'")
         seen_alert_ids.add(alert_id)
 
-        if row_reasons:
+        if row_reasons or not sev_raw or not stat_raw:
             rejection_reasons.append(f"Alert Row {idx + 1}: {'; '.join(row_reasons)}")
             rejected_details.append({"row_index": idx, "entity_type": "alert", "reasons": row_reasons, "raw_record": raw_row})
         else:
@@ -487,8 +532,8 @@ def validate_and_canonicalize_bundle(
                     reporting_period_id=rep_id,
                     event_time=parsed_dt or now,
                     severity=Severity[sev_raw],
-                    alert_category=str(mapped["alert_category"]),
-                    source=str(mapped["source"]),
+                    alert_category=cat_val,
+                    source=src_val,
                     status=AlertStatus[stat_raw],
                     dataset_version_id=dataset_version_id,
                     source_record_ref=str(mapped.get("source_record_ref", f"alert_{alert_id}")),

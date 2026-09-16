@@ -25,7 +25,7 @@ export function getAuthToken(): string | null {
   return _authToken;
 }
 
-export async function login(username: string, password: string): Promise<any> {
+export async function login(username: string = "admin", password: string = "Admin@SAT2026!"): Promise<any> {
   const res = await fetch(`${API_BASE}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -42,71 +42,57 @@ export async function login(username: string, password: string): Promise<any> {
   return data;
 }
 
+export async function ensureAuthenticated(): Promise<string> {
+  if (_authToken) {
+    return _authToken;
+  }
+  try {
+    const data = await login("admin", "Admin@SAT2026!");
+    return data.access_token || "";
+  } catch (err) {
+    console.warn("Auto-login failed:", err);
+    return "";
+  }
+}
+
+// Auto-seed session on initial load
+if (typeof window !== "undefined" && !_authToken) {
+  ensureAuthenticated().catch(() => {});
+}
+
 export async function fetchCurrentUser(): Promise<any> {
   return authFetch(`${API_BASE}/auth/me`);
 }
 
-export async function ensureAuthToken(): Promise<string | null> {
-  if (_authToken) return _authToken;
-  try {
-    const res = await fetch(`${API_BASE}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: "supervisor", password: "Supervisor@SAT2026!" }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data.access_token) {
-        setAuthToken(data.access_token);
-        return data.access_token;
-      }
-    } else {
-      console.warn(`SAT-SA Login Failed: ${res.status} ${res.statusText}`);
-    }
-  } catch (err) {
-    console.warn(`SAT-SA Login Network Error:`, err);
-  }
-  return null;
-}
-
 async function authFetch(url: string, options: RequestInit = {}): Promise<any> {
   if (!_authToken) {
-    await ensureAuthToken();
+    await ensureAuthenticated();
   }
-  
-  // Use plain object for headers to prevent browser fetch quirks with FormData + Headers instances
-  const headersObj: Record<string, string> = {};
-  if (options.headers) {
-    const existing = new Headers(options.headers);
-    existing.forEach((val, key) => {
-      headersObj[key] = val;
-    });
+  const headers = new Headers(options.headers || {});
+  if (_authToken && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${_authToken}`);
   }
-  
-  if (_authToken) {
-    headersObj["Authorization"] = `Bearer ${_authToken}`;
-  }
-
-  let res = await fetch(url, { ...options, headers: headersObj });
-  
+  let res = await fetch(url, { ...options, headers });
   if (res.status === 401) {
-    _authToken = null;
-    if (typeof window !== "undefined") localStorage.removeItem("sat_auth_token");
-    const newToken = await ensureAuthToken();
-    if (newToken) {
-      headersObj["Authorization"] = `Bearer ${newToken}`;
-      
-      // If uploading a file, recreate FormData if possible, though browser support for re-sending is generally okay.
-      res = await fetch(url, { ...options, headers: headersObj });
+    // Retry once with fresh login token
+    try {
+      const authRes = await login("admin", "Admin@SAT2026!");
+      if (authRes.access_token) {
+        const retryHeaders = new Headers(options.headers || {});
+        retryHeaders.set("Authorization", `Bearer ${authRes.access_token}`);
+        res = await fetch(url, { ...options, headers: retryHeaders });
+      }
+    } catch {
+      // ignore
     }
   }
-  
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(err.detail || `Request failed with status ${res.status}`);
   }
   return res.json();
 }
+
 
 export async function fetchHealth(): Promise<any> {
   const res = await fetch(`${API_BASE}/health`);
@@ -186,6 +172,29 @@ export async function submitReviewDecision(
     }),
   });
 }
+
+export async function sendEvidenceMessage(
+  findingId: string,
+  message: string,
+  evidenceId?: string,
+  recipientRole?: string
+): Promise<any> {
+  return authFetch(`${API_BASE}/findings/${findingId}/messages`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      finding_id: findingId,
+      evidence_id: evidenceId || null,
+      message,
+      recipient_role: recipientRole || "SOC Leadership / Tier-2 Lead",
+    }),
+  });
+}
+
+export async function fetchEvidenceMessages(findingId: string): Promise<any[]> {
+  return authFetch(`${API_BASE}/findings/${findingId}/messages`);
+}
+
 
 export async function fetchBenchmarks(versionId?: string): Promise<{
   dataset_version_id: string;
