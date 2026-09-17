@@ -1,5 +1,3 @@
-version: "3.9"
-
 # Prototype deployment only (SRS §18). No external network dependency:
 # everything here runs on the local Docker network, with no outbound
 # service configured. Verify with a dependency/network audit before demo
@@ -11,7 +9,7 @@ services:
     environment:
       POSTGRES_DB: satsa
       POSTGRES_USER: satsa
-      POSTGRES_PASSWORD: satsa_dev_only_change_me
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
     ports:
       - "5432:5432"
     volumes:
@@ -32,11 +30,11 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://satsa:satsa_dev_only_change_me@db:5432/satsa
+      DATABASE_URL: postgresql://satsa:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/satsa
+      SAT_PERSISTENCE_MODE: postgres
+      SAT_ENV: production
+      SAT_SECRET_KEY: ${SAT_SECRET_KEY:?set SAT_SECRET_KEY in .env}
     ports:
       - "8000:8000"
-    volumes:
-      - .:/app
-
 volumes:
   satsa_pgdata:

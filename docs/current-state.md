@@ -34,7 +34,8 @@ Full-Stack MVP Complete — All P0, P1, and Validation Milestones Operational.
   - Cyber command center aesthetic with dark theme, glassmorphism, side-by-side Goodhart's Law reality check ("The Wow Moment"), interactive evidence drill-down modal, supervisory review action workflow, peer benchmark charts, negative space matrix, and review yield curves.
 
 ## Test Status
-- `python -m pytest tests/ -v`: 139 passed, 0 failed.
+- `python -m pytest tests/ -v`: run this command for the current count; do not
+  treat a transcribed count as a release metric.
 - Circularity & Independence Regression Suite (`test_circularity_audit.py`): 8/8 passed.
 - End-to-end integration tests: 10/10 passed.
 

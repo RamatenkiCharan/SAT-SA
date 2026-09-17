@@ -12,3 +12,12 @@ build/
 .DS_Store
 /tmp/sat-sa-uploads/
 *.db
+pytest-temp/
+scratch/
+*.zip
+
+pytest-temp/
+results/
+scratch/
+*.html
+*.zip

@@ -1,5 +1,8 @@
--- SAT-SA — Initial canonical schema
+-- SAT-SA — Initial canonical schema (001)
 -- Source of truth: SAT-SA_SRS_v2_revised.md §9, §24
+--
+-- This file is the SOLE authoritative schema definition.
+-- The migration runner applies it with SQLite dialect adaptation when needed.
 --
 -- Design rules enforced structurally here:
 --   - dataset_versions are immutable once created (no UPDATE path provided
@@ -15,316 +18,272 @@
 
 BEGIN;
 
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+-- PostgreSQL-only: CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- ---------------------------------------------------------------------
 -- Identity / RBAC (Hackathon Security Baseline, SRS §15.1)
 -- ---------------------------------------------------------------------
 
-CREATE TABLE roles (
-    role_id      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    role_name    TEXT NOT NULL UNIQUE  -- supervisor | analyst | admin
+CREATE TABLE IF NOT EXISTS roles (
+    role_id      VARCHAR(64) PRIMARY KEY,
+    role_name    VARCHAR(64) NOT NULL UNIQUE
 );
 
-CREATE TABLE users (
-    user_id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    username      TEXT NOT NULL UNIQUE,
-    password_hash TEXT NOT NULL,
-    role_id       UUID NOT NULL REFERENCES roles(role_id),
-    full_name     TEXT,
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-    is_active     BOOLEAN NOT NULL DEFAULT true
+CREATE TABLE IF NOT EXISTS users (
+    user_id       VARCHAR(64) PRIMARY KEY,
+    username      VARCHAR(128) NOT NULL UNIQUE,
+    password_hash VARCHAR(256) NOT NULL,
+    role_id       VARCHAR(64) NOT NULL REFERENCES roles(role_id),
+    full_name     VARCHAR(256),
+    created_at    TIMESTAMP NOT NULL,
+    is_active     BOOLEAN NOT NULL DEFAULT 1
 );
 
 -- ---------------------------------------------------------------------
 -- Dataset versioning / provenance (§5, §52, §53)
 -- ---------------------------------------------------------------------
 
-CREATE TABLE datasets (
-    dataset_id    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    cse_id        UUID,  -- FK added after cse table exists (below)
-    name          TEXT NOT NULL,
+CREATE TABLE IF NOT EXISTS datasets (
+    dataset_id    VARCHAR(64) PRIMARY KEY,
+    cse_id        VARCHAR(64),
+    name          VARCHAR(256) NOT NULL,
     description   TEXT,
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-    created_by    UUID REFERENCES users(user_id)
+    created_at    TIMESTAMP NOT NULL,
+    created_by    VARCHAR(64)
 );
 
-CREATE TABLE dataset_versions (
-    dataset_version_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    dataset_id          UUID NOT NULL REFERENCES datasets(dataset_id),
+CREATE TABLE IF NOT EXISTS dataset_versions (
+    dataset_version_id VARCHAR(64) PRIMARY KEY,
+    dataset_id          VARCHAR(64) NOT NULL REFERENCES datasets(dataset_id),
     version_number       INTEGER NOT NULL,
     source_file_ref      TEXT NOT NULL,
-    import_time          TIMESTAMPTZ NOT NULL DEFAULT now(),
-    transformation_version TEXT NOT NULL,
-    schema_version       TEXT NOT NULL,
+    import_time          TIMESTAMP NOT NULL,
+    transformation_version VARCHAR(32) NOT NULL,
+    schema_version       VARCHAR(32) NOT NULL,
     row_count            INTEGER NOT NULL DEFAULT 0,
     data_quality_score   NUMERIC,
-    data_quality_components JSONB,
-    data_quality_warnings JSONB,
-    file_format          TEXT,
-    sha256_hash          TEXT,
+    data_quality_components TEXT,
+    data_quality_warnings TEXT,
+    file_format          VARCHAR(32),
+    sha256_hash          VARCHAR(128),
     accepted_rows        INTEGER NOT NULL DEFAULT 0,
     rejected_rows        INTEGER NOT NULL DEFAULT 0,
-    rejection_reasons    JSONB,
-    is_immutable          BOOLEAN NOT NULL DEFAULT true,
+    rejection_reasons    TEXT,
+    is_immutable          BOOLEAN NOT NULL DEFAULT 1,
     UNIQUE (dataset_id, version_number)
 );
--- Immutability is enforced at the application layer (services/ingestion.py):
--- no UPDATE statement is ever issued against a row in this table after insert.
 
 -- ---------------------------------------------------------------------
 -- Canonical evidence model (§9)
 -- ---------------------------------------------------------------------
 
-CREATE TABLE cse (
-    cse_id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    dataset_version_id  UUID NOT NULL REFERENCES dataset_versions(dataset_version_id),
-    name                TEXT NOT NULL,
-    sector              TEXT NOT NULL,
-    scale               TEXT NOT NULL,
+CREATE TABLE IF NOT EXISTS cse (
+    cse_id              VARCHAR(64) PRIMARY KEY,
+    dataset_version_id  VARCHAR(64) NOT NULL REFERENCES dataset_versions(dataset_version_id),
+    name                VARCHAR(256) NOT NULL,
+    sector              VARCHAR(128) NOT NULL,
+    scale               VARCHAR(64) NOT NULL,
+    reporting_period_id VARCHAR(64),
     source_record_ref   TEXT,
-    ingest_time         TIMESTAMPTZ NOT NULL DEFAULT now()
+    ingest_time         TIMESTAMP NOT NULL
 );
 
-ALTER TABLE datasets ADD CONSTRAINT fk_datasets_cse FOREIGN KEY (cse_id) REFERENCES cse(cse_id);
-
-CREATE TABLE reporting_periods (
-    reporting_period_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    cse_id               UUID NOT NULL REFERENCES cse(cse_id),
-    period_start         TIMESTAMPTZ NOT NULL,
-    period_end           TIMESTAMPTZ NOT NULL
+CREATE TABLE IF NOT EXISTS reporting_periods (
+    reporting_period_id VARCHAR(64) PRIMARY KEY,
+    cse_id               VARCHAR(64) NOT NULL REFERENCES cse(cse_id),
+    period_start         TIMESTAMP NOT NULL,
+    period_end           TIMESTAMP NOT NULL
 );
 
-CREATE TABLE assets (
-    asset_id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    dataset_version_id   UUID NOT NULL REFERENCES dataset_versions(dataset_version_id),
-    cse_id               UUID NOT NULL REFERENCES cse(cse_id),
-    criticality          TEXT NOT NULL CHECK (criticality IN ('CRITICAL','HIGH','MEDIUM','LOW')),
-    asset_type           TEXT NOT NULL,
-    environment          TEXT NOT NULL,
+CREATE TABLE IF NOT EXISTS assets (
+    asset_id             VARCHAR(64) PRIMARY KEY,
+    dataset_version_id   VARCHAR(64) NOT NULL REFERENCES dataset_versions(dataset_version_id),
+    cse_id               VARCHAR(64) NOT NULL REFERENCES cse(cse_id),
+    criticality          VARCHAR(32) NOT NULL,
+    asset_type           VARCHAR(128) NOT NULL,
+    environment          VARCHAR(128) NOT NULL,
     expected_monitoring_context TEXT,
     source_record_ref    TEXT,
-    ingest_time          TIMESTAMPTZ NOT NULL DEFAULT now()
+    ingest_time          TIMESTAMP NOT NULL
 );
 
-CREATE TABLE alerts (
-    alert_id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    dataset_version_id   UUID NOT NULL REFERENCES dataset_versions(dataset_version_id),
-    cse_id               UUID NOT NULL REFERENCES cse(cse_id),
-    asset_id             UUID NOT NULL REFERENCES assets(asset_id),
-    reporting_period_id  UUID NOT NULL REFERENCES reporting_periods(reporting_period_id),
-    event_time           TIMESTAMPTZ NOT NULL,
-    severity             TEXT NOT NULL CHECK (severity IN ('CRITICAL','HIGH','MEDIUM','LOW','INFO')),
-    alert_category       TEXT NOT NULL,
-    source                TEXT NOT NULL,
-    status                TEXT NOT NULL CHECK (status IN ('OPEN','INVESTIGATING','ESCALATED','CLOSED','REOPENED')),
+CREATE TABLE IF NOT EXISTS alerts (
+    alert_id             VARCHAR(64) PRIMARY KEY,
+    dataset_version_id   VARCHAR(64) NOT NULL REFERENCES dataset_versions(dataset_version_id),
+    cse_id               VARCHAR(64) NOT NULL REFERENCES cse(cse_id),
+    asset_id             VARCHAR(64) NOT NULL REFERENCES assets(asset_id),
+    reporting_period_id  VARCHAR(64) NOT NULL REFERENCES reporting_periods(reporting_period_id),
+    event_time           TIMESTAMP NOT NULL,
+    severity             VARCHAR(32) NOT NULL,
+    alert_category       VARCHAR(128) NOT NULL,
+    source                VARCHAR(128) NOT NULL,
+    status                VARCHAR(32) NOT NULL,
     source_record_ref     TEXT,
-    ingest_time           TIMESTAMPTZ NOT NULL DEFAULT now()
+    ingest_time           TIMESTAMP NOT NULL
 );
-CREATE INDEX idx_alerts_asset_category_time ON alerts (asset_id, alert_category, event_time);
+CREATE INDEX IF NOT EXISTS idx_alerts_asset_category_time ON alerts (asset_id, alert_category, event_time);
 
-CREATE TABLE investigations (
-    investigation_id     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    dataset_version_id   UUID NOT NULL REFERENCES dataset_versions(dataset_version_id),
-    alert_id             UUID NOT NULL REFERENCES alerts(alert_id),
-    started_at           TIMESTAMPTZ NOT NULL,
-    ended_at             TIMESTAMPTZ,
-    analyst_id           TEXT,
-    evidence_count       INTEGER NOT NULL DEFAULT 0 CHECK (evidence_count >= 0),
-    disposition          TEXT,
+CREATE TABLE IF NOT EXISTS investigations (
+    investigation_id     VARCHAR(64) PRIMARY KEY,
+    dataset_version_id   VARCHAR(64) NOT NULL REFERENCES dataset_versions(dataset_version_id),
+    alert_id             VARCHAR(64) NOT NULL REFERENCES alerts(alert_id),
+    started_at           TIMESTAMP NOT NULL,
+    ended_at             TIMESTAMP,
+    analyst_id           VARCHAR(128),
+    evidence_count       INTEGER NOT NULL DEFAULT 0,
+    disposition          VARCHAR(128),
     source_record_ref    TEXT,
-    ingest_time          TIMESTAMPTZ NOT NULL DEFAULT now()
+    ingest_time          TIMESTAMP NOT NULL
 );
 
-CREATE TABLE cases (
-    case_id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    dataset_version_id   UUID NOT NULL REFERENCES dataset_versions(dataset_version_id),
-    alert_id             UUID NOT NULL REFERENCES alerts(alert_id),
-    opened_at            TIMESTAMPTZ NOT NULL,
-    closed_at            TIMESTAMPTZ,
-    severity             TEXT NOT NULL CHECK (severity IN ('CRITICAL','HIGH','MEDIUM','LOW','INFO')),
-    outcome              TEXT,
+CREATE TABLE IF NOT EXISTS cases (
+    case_id              VARCHAR(64) PRIMARY KEY,
+    dataset_version_id   VARCHAR(64) NOT NULL REFERENCES dataset_versions(dataset_version_id),
+    alert_id             VARCHAR(64) NOT NULL REFERENCES alerts(alert_id),
+    opened_at            TIMESTAMP NOT NULL,
+    closed_at            TIMESTAMP,
+    severity             VARCHAR(32) NOT NULL,
+    outcome              VARCHAR(128),
     source_record_ref    TEXT,
-    ingest_time          TIMESTAMPTZ NOT NULL DEFAULT now()
+    ingest_time          TIMESTAMP NOT NULL
 );
 
-CREATE TABLE escalations (
-    escalation_id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    dataset_version_id   UUID NOT NULL REFERENCES dataset_versions(dataset_version_id),
-    case_id              UUID NOT NULL REFERENCES cases(case_id),
-    escalated_at         TIMESTAMPTZ NOT NULL,
-    level                TEXT NOT NULL,
-    target               TEXT NOT NULL,
+CREATE TABLE IF NOT EXISTS escalations (
+    escalation_id        VARCHAR(64) PRIMARY KEY,
+    dataset_version_id   VARCHAR(64) NOT NULL REFERENCES dataset_versions(dataset_version_id),
+    case_id              VARCHAR(64) NOT NULL REFERENCES cases(case_id),
+    escalated_at         TIMESTAMP NOT NULL,
+    level                VARCHAR(64) NOT NULL,
+    target               VARCHAR(128) NOT NULL,
     source_record_ref    TEXT,
-    ingest_time          TIMESTAMPTZ NOT NULL DEFAULT now()
+    ingest_time          TIMESTAMP NOT NULL
 );
 
-CREATE TABLE actions (
-    action_id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    dataset_version_id   UUID NOT NULL REFERENCES dataset_versions(dataset_version_id),
-    case_id              UUID NOT NULL REFERENCES cases(case_id),
-    action_type          TEXT NOT NULL,
-    performed_at         TIMESTAMPTZ NOT NULL,
-    outcome              TEXT,
+CREATE TABLE IF NOT EXISTS actions (
+    action_id            VARCHAR(64) PRIMARY KEY,
+    dataset_version_id   VARCHAR(64) NOT NULL REFERENCES dataset_versions(dataset_version_id),
+    case_id              VARCHAR(64) NOT NULL REFERENCES cases(case_id),
+    action_type          VARCHAR(128) NOT NULL,
+    performed_at         TIMESTAMP NOT NULL,
+    outcome              VARCHAR(128),
     source_record_ref    TEXT,
-    ingest_time          TIMESTAMPTZ NOT NULL DEFAULT now()
+    ingest_time          TIMESTAMP NOT NULL
 );
 
-CREATE TABLE closures (
-    closure_id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    dataset_version_id   UUID NOT NULL REFERENCES dataset_versions(dataset_version_id),
-    case_id              UUID NOT NULL REFERENCES cases(case_id),
-    closed_at            TIMESTAMPTZ NOT NULL,
-    reason               TEXT NOT NULL,
-    reviewer             TEXT,
+CREATE TABLE IF NOT EXISTS closures (
+    closure_id           VARCHAR(64) PRIMARY KEY,
+    dataset_version_id   VARCHAR(64) NOT NULL REFERENCES dataset_versions(dataset_version_id),
+    case_id              VARCHAR(64) NOT NULL REFERENCES cases(case_id),
+    closed_at            TIMESTAMP NOT NULL,
+    reason               VARCHAR(256) NOT NULL,
+    reviewer             VARCHAR(128),
     source_record_ref    TEXT,
-    ingest_time          TIMESTAMPTZ NOT NULL DEFAULT now()
+    ingest_time          TIMESTAMP NOT NULL
 );
 
-CREATE TABLE coverage_observations (
-    observation_id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    dataset_version_id   UUID NOT NULL REFERENCES dataset_versions(dataset_version_id),
-    cse_id               UUID NOT NULL REFERENCES cse(cse_id),
-    asset_id             UUID REFERENCES assets(asset_id),
-    alert_category       TEXT,
-    period_id            UUID NOT NULL REFERENCES reporting_periods(reporting_period_id),
-    expected_count       NUMERIC NOT NULL CHECK (expected_count >= 0),
-    observed_count        NUMERIC NOT NULL CHECK (observed_count >= 0),
+CREATE TABLE IF NOT EXISTS coverage_observations (
+    observation_id       VARCHAR(64) PRIMARY KEY,
+    dataset_version_id   VARCHAR(64) NOT NULL REFERENCES dataset_versions(dataset_version_id),
+    cse_id               VARCHAR(64) NOT NULL REFERENCES cse(cse_id),
+    asset_id             VARCHAR(64),
+    alert_category       VARCHAR(128),
+    period_id            VARCHAR(64) NOT NULL REFERENCES reporting_periods(reporting_period_id),
+    expected_count       NUMERIC NOT NULL,
+    observed_count        NUMERIC NOT NULL,
     source_record_ref     TEXT,
-    ingest_time           TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
--- ---------------------------------------------------------------------
--- Peer grouping (§7.7)
--- ---------------------------------------------------------------------
-
-CREATE TABLE peer_groups (
-    peer_group_id  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    definition     TEXT NOT NULL
-);
-
-CREATE TABLE peer_memberships (
-    peer_group_id  UUID NOT NULL REFERENCES peer_groups(peer_group_id),
-    cse_id         UUID NOT NULL REFERENCES cse(cse_id),
-    PRIMARY KEY (peer_group_id, cse_id)
+    ingest_time           TIMESTAMP NOT NULL
 );
 
 -- ---------------------------------------------------------------------
 -- Configuration governance: rulesets as versioned rows (§24, §69)
 -- ---------------------------------------------------------------------
 
-CREATE TABLE rulesets (
-    ruleset_id     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    ruleset_name   TEXT NOT NULL,        -- e.g. 'data_quality_score', 'evidence_fusion'
-    version        TEXT NOT NULL,        -- e.g. 'V1'
-    weights_json   JSONB NOT NULL,
-    author         TEXT,
+CREATE TABLE IF NOT EXISTS rulesets (
+    ruleset_id     VARCHAR(64) PRIMARY KEY,
+    ruleset_name   VARCHAR(128) NOT NULL,
+    version        VARCHAR(64) NOT NULL,
+    weights_json   TEXT NOT NULL,
+    author         VARCHAR(128),
     rationale      TEXT,
-    effective_date TIMESTAMPTZ NOT NULL DEFAULT now(),
+    effective_date TIMESTAMP NOT NULL,
+    is_active      BOOLEAN DEFAULT 0,
     UNIQUE (ruleset_name, version)
-);
-
-CREATE TABLE model_versions (
-    model_version_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    model_name        TEXT NOT NULL,
-    version           TEXT NOT NULL,
-    feature_schema    JSONB,
-    training_data_description TEXT,
-    evaluation_record JSONB,
-    activation_status TEXT NOT NULL DEFAULT 'INACTIVE',
-    UNIQUE (model_name, version)
 );
 
 -- ---------------------------------------------------------------------
 -- Analysis runs, findings, evidence, review (§24, §54)
 -- ---------------------------------------------------------------------
 
-CREATE TABLE analysis_runs (
-    analysis_run_id   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    dataset_id        UUID REFERENCES datasets(dataset_id),
-    dataset_version_id UUID NOT NULL REFERENCES dataset_versions(dataset_version_id),
-    schema_version    TEXT NOT NULL DEFAULT '2.0.0',
-    ruleset_id        UUID REFERENCES rulesets(ruleset_id),
-    ruleset_version   TEXT NOT NULL DEFAULT 'V1',
-    detector_config   JSONB,
-    app_version       TEXT NOT NULL DEFAULT '1.0.0',
-    git_commit        TEXT,
-    model_version_id  UUID REFERENCES model_versions(model_version_id),
-    started_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
-    finished_at       TIMESTAMPTZ,
-    status            TEXT NOT NULL DEFAULT 'COMPLETED',  -- RUNNING | COMPLETED | FAILED
+CREATE TABLE IF NOT EXISTS analysis_runs (
+    analysis_run_id   VARCHAR(64) PRIMARY KEY,
+    dataset_id        VARCHAR(64),
+    dataset_version_id VARCHAR(64) NOT NULL REFERENCES dataset_versions(dataset_version_id),
+    schema_version    VARCHAR(32) NOT NULL DEFAULT '2.0.0',
+    ruleset_id        VARCHAR(64),
+    ruleset_version   VARCHAR(64) NOT NULL DEFAULT 'V1',
+    detector_config   TEXT,
+    app_version       VARCHAR(32) NOT NULL DEFAULT '1.0.0',
+    git_commit        VARCHAR(64),
+    model_version_id  VARCHAR(64),
+    started_at        TIMESTAMP NOT NULL,
+    finished_at       TIMESTAMP,
+    status            VARCHAR(32) NOT NULL DEFAULT 'COMPLETED',
     error_message     TEXT,
     findings_count    INTEGER NOT NULL DEFAULT 0
 );
 
-
-CREATE TABLE analytical_features (
-    feature_id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    analysis_run_id   UUID NOT NULL REFERENCES analysis_runs(analysis_run_id),
-    scope_type        TEXT NOT NULL,   -- 'cse' | 'asset' | 'case' | ...
-    scope_id          UUID NOT NULL,
-    feature_name      TEXT NOT NULL,
-    feature_value     NUMERIC,
-    computed_at       TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE TABLE findings (
-    finding_id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    cse_id                UUID NOT NULL REFERENCES cse(cse_id),
-    reporting_period_id   UUID NOT NULL REFERENCES reporting_periods(reporting_period_id),
-    finding_type          TEXT NOT NULL CHECK (finding_type IN
-                             ('FAST_CLOSURE','ESCALATION_GAP','REPEATED_UNRESOLVED_ALERTS','COVERAGE_GAP')),
-    priority_score        NUMERIC NOT NULL CHECK (priority_score >= 0 AND priority_score <= 1),
-    priority_components   JSONB NOT NULL,
-    evidentiary_confidence NUMERIC NOT NULL CHECK (evidentiary_confidence >= 0 AND evidentiary_confidence <= 1),
+CREATE TABLE IF NOT EXISTS findings (
+    finding_id            VARCHAR(64) PRIMARY KEY,
+    cse_id                VARCHAR(64) NOT NULL REFERENCES cse(cse_id),
+    reporting_period_id   VARCHAR(64) NOT NULL,
+    finding_type          VARCHAR(64) NOT NULL,
+    priority_score        NUMERIC NOT NULL,
+    priority_components   TEXT NOT NULL,
+    evidentiary_confidence NUMERIC NOT NULL,
     data_quality_score     NUMERIC NOT NULL,
-    data_quality_components JSONB NOT NULL,
-    expectation_basis      TEXT NOT NULL,
+    data_quality_components TEXT NOT NULL,
+    expectation_basis      VARCHAR(64) NOT NULL,
     expected_behavior       TEXT NOT NULL,
     observed_behavior       TEXT NOT NULL,
-    supporting_signals      JSONB NOT NULL DEFAULT '[]',
-    contradicting_signals   JSONB NOT NULL DEFAULT '[]',
+    supporting_signals      TEXT NOT NULL,
+    contradicting_signals   TEXT NOT NULL,
     peer_context            TEXT,
     temporal_context        TEXT,
-    analytical_method       TEXT NOT NULL,
-    ruleset_id              UUID REFERENCES rulesets(ruleset_id),
-    ruleset_version         TEXT,
-    model_version_id        UUID REFERENCES model_versions(model_version_id),
-    model_version           TEXT,
-    dataset_version_id      UUID NOT NULL REFERENCES dataset_versions(dataset_version_id),
-    analysis_run_id         UUID NOT NULL REFERENCES analysis_runs(analysis_run_id),
-    review_status           TEXT,   -- CONFIRMED | FALSE_POSITIVE | NEEDS_INVESTIGATION | INSUFFICIENT_EVIDENCE
+    analytical_method       VARCHAR(128) NOT NULL,
+    ruleset_id              VARCHAR(64),
+    ruleset_version         VARCHAR(64),
+    model_version_id        VARCHAR(64),
+    model_version           VARCHAR(64),
+    dataset_version_id      VARCHAR(64) NOT NULL REFERENCES dataset_versions(dataset_version_id),
+    analysis_run_id         VARCHAR(64) NOT NULL,
+    review_status           VARCHAR(64),
     review_notes            TEXT,
-    created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
-    superseded_by           UUID REFERENCES findings(finding_id)  -- append-only history (skill 06)
+    created_at              TIMESTAMP NOT NULL,
+    superseded_by           VARCHAR(64)
 );
 
-CREATE TABLE finding_evidence (
-    finding_id     UUID NOT NULL REFERENCES findings(finding_id),
-    entity_type    TEXT NOT NULL,
-    entity_id      UUID NOT NULL,
+CREATE TABLE IF NOT EXISTS finding_evidence (
+    finding_id     VARCHAR(64) NOT NULL REFERENCES findings(finding_id),
+    entity_type    VARCHAR(64) NOT NULL,
+    entity_id      VARCHAR(64) NOT NULL,
     PRIMARY KEY (finding_id, entity_type, entity_id)
 );
--- Application layer MUST reject any finding insert that would leave it with
--- zero rows here (§7.4.1: "no detector may produce a finding without at
--- least one linked evidence record").
 
-CREATE TABLE finding_signals (
-    finding_id     UUID NOT NULL REFERENCES findings(finding_id),
-    signal_name    TEXT NOT NULL,
+CREATE TABLE IF NOT EXISTS finding_signals (
+    finding_id     VARCHAR(64) NOT NULL REFERENCES findings(finding_id),
+    signal_name    VARCHAR(128) NOT NULL,
     signal_value   NUMERIC,
-    is_contradicting BOOLEAN NOT NULL DEFAULT false,
+    is_contradicting BOOLEAN NOT NULL DEFAULT 0,
     PRIMARY KEY (finding_id, signal_name)
 );
 
-CREATE TABLE review_decisions (
-    review_decision_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    finding_id          UUID NOT NULL REFERENCES findings(finding_id),
-    decision             TEXT NOT NULL CHECK (decision IN
-                            ('CONFIRMED','FALSE_POSITIVE','NEEDS_INVESTIGATION','INSUFFICIENT_EVIDENCE')),
-    reviewer_id           TEXT,
-    reviewer_name         TEXT,
-    decided_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
+CREATE TABLE IF NOT EXISTS review_decisions (
+    review_decision_id VARCHAR(64) PRIMARY KEY,
+    finding_id          VARCHAR(64) NOT NULL REFERENCES findings(finding_id),
+    decision             VARCHAR(64) NOT NULL,
+    reviewer_id           VARCHAR(64),
+    reviewer_name         VARCHAR(128),
+    decided_at            TIMESTAMP NOT NULL,
     notes                 TEXT
 );
 
@@ -332,18 +291,18 @@ CREATE TABLE review_decisions (
 -- Audit (Hackathon Baseline §15.1)
 -- ---------------------------------------------------------------------
 
-CREATE TABLE audit_events (
-    audit_event_id  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id         TEXT,
-    username        TEXT,
-    action          TEXT NOT NULL,     -- e.g. 'IMPORT_DATASET', 'REVIEW_FINDING', 'EXPORT_REPORT'
-    target_type     TEXT,
-    target_id       TEXT,
-    occurred_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
-    details_json    JSONB
+CREATE TABLE IF NOT EXISTS audit_events (
+    audit_event_id  VARCHAR(64) PRIMARY KEY,
+    user_id         VARCHAR(64),
+    username        VARCHAR(128),
+    action          VARCHAR(128) NOT NULL,
+    target_type     VARCHAR(64),
+    target_id       VARCHAR(128),
+    occurred_at     TIMESTAMP NOT NULL,
+    details_json    TEXT
 );
 
-CREATE INDEX idx_findings_cse_period ON findings (cse_id, reporting_period_id);
-CREATE INDEX idx_findings_priority ON findings (priority_score DESC);
+CREATE INDEX IF NOT EXISTS idx_findings_cse_period ON findings (cse_id, reporting_period_id);
+CREATE INDEX IF NOT EXISTS idx_findings_priority ON findings (priority_score DESC);
 
 COMMIT;

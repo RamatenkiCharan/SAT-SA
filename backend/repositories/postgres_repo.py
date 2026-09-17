@@ -134,299 +134,18 @@ class PostgresRepository(BaseSATRepository):
         self._load_state_from_db()
 
     # -----------------------------------------------------------------------
-    # Schema DDL Initialization
+    # Schema Initialization via Migration Runner (sole schema authority)
     # -----------------------------------------------------------------------
     def _initialize_schema(self):
-        """Creates required relational tables if they do not already exist."""
-        ddl_statements = [
-            """
-            CREATE TABLE IF NOT EXISTS roles (
-                role_id VARCHAR(64) PRIMARY KEY,
-                role_name VARCHAR(64) NOT NULL UNIQUE
-            );
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS users (
-                user_id VARCHAR(64) PRIMARY KEY,
-                username VARCHAR(128) NOT NULL UNIQUE,
-                password_hash VARCHAR(256) NOT NULL,
-                role_id VARCHAR(64) NOT NULL,
-                full_name VARCHAR(256),
-                created_at TIMESTAMP NOT NULL,
-                is_active BOOLEAN NOT NULL DEFAULT 1
-            );
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS datasets (
-                dataset_id VARCHAR(64) PRIMARY KEY,
-                cse_id VARCHAR(64),
-                name VARCHAR(256) NOT NULL,
-                description TEXT,
-                created_at TIMESTAMP NOT NULL,
-                created_by VARCHAR(64)
-            );
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS dataset_versions (
-                dataset_version_id VARCHAR(64) PRIMARY KEY,
-                dataset_id VARCHAR(64) NOT NULL REFERENCES datasets(dataset_id),
-                version_number INTEGER NOT NULL,
-                source_file_ref TEXT NOT NULL,
-                import_time TIMESTAMP NOT NULL,
-                transformation_version VARCHAR(32) NOT NULL,
-                schema_version VARCHAR(32) NOT NULL,
-                row_count INTEGER NOT NULL DEFAULT 0,
-                data_quality_score NUMERIC,
-                data_quality_components TEXT,
-                data_quality_warnings TEXT,
-                file_format VARCHAR(32),
-                sha256_hash VARCHAR(128),
-                accepted_rows INTEGER NOT NULL DEFAULT 0,
-                rejected_rows INTEGER NOT NULL DEFAULT 0,
-                rejection_reasons TEXT,
-                is_immutable BOOLEAN NOT NULL DEFAULT 1,
-                UNIQUE (dataset_id, version_number)
-            );
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS cse (
-                cse_id VARCHAR(64) PRIMARY KEY,
-                dataset_version_id VARCHAR(64) NOT NULL REFERENCES dataset_versions(dataset_version_id),
-                name VARCHAR(256) NOT NULL,
-                sector VARCHAR(128) NOT NULL,
-                scale VARCHAR(64) NOT NULL,
-                reporting_period_id VARCHAR(64),
-                source_record_ref TEXT,
-                ingest_time TIMESTAMP NOT NULL
-            );
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS reporting_periods (
-                reporting_period_id VARCHAR(64) PRIMARY KEY,
-                cse_id VARCHAR(64) NOT NULL REFERENCES cse(cse_id),
-                period_start TIMESTAMP NOT NULL,
-                period_end TIMESTAMP NOT NULL
-            );
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS assets (
-                asset_id VARCHAR(64) PRIMARY KEY,
-                dataset_version_id VARCHAR(64) NOT NULL REFERENCES dataset_versions(dataset_version_id),
-                cse_id VARCHAR(64) NOT NULL REFERENCES cse(cse_id),
-                criticality VARCHAR(32) NOT NULL,
-                asset_type VARCHAR(128) NOT NULL,
-                environment VARCHAR(128) NOT NULL,
-                expected_monitoring_context TEXT,
-                source_record_ref TEXT,
-                ingest_time TIMESTAMP NOT NULL
-            );
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS alerts (
-                alert_id VARCHAR(64) PRIMARY KEY,
-                dataset_version_id VARCHAR(64) NOT NULL REFERENCES dataset_versions(dataset_version_id),
-                cse_id VARCHAR(64) NOT NULL REFERENCES cse(cse_id),
-                asset_id VARCHAR(64) NOT NULL REFERENCES assets(asset_id),
-                reporting_period_id VARCHAR(64) NOT NULL REFERENCES reporting_periods(reporting_period_id),
-                event_time TIMESTAMP NOT NULL,
-                severity VARCHAR(32) NOT NULL,
-                alert_category VARCHAR(128) NOT NULL,
-                source VARCHAR(128) NOT NULL,
-                status VARCHAR(32) NOT NULL,
-                source_record_ref TEXT,
-                ingest_time TIMESTAMP NOT NULL
-            );
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS investigations (
-                investigation_id VARCHAR(64) PRIMARY KEY,
-                dataset_version_id VARCHAR(64) NOT NULL REFERENCES dataset_versions(dataset_version_id),
-                alert_id VARCHAR(64) NOT NULL REFERENCES alerts(alert_id),
-                started_at TIMESTAMP NOT NULL,
-                ended_at TIMESTAMP,
-                analyst_id VARCHAR(128),
-                evidence_count INTEGER NOT NULL DEFAULT 0,
-                disposition VARCHAR(128),
-                source_record_ref TEXT,
-                ingest_time TIMESTAMP NOT NULL
-            );
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS cases (
-                case_id VARCHAR(64) PRIMARY KEY,
-                dataset_version_id VARCHAR(64) NOT NULL REFERENCES dataset_versions(dataset_version_id),
-                alert_id VARCHAR(64) NOT NULL REFERENCES alerts(alert_id),
-                opened_at TIMESTAMP NOT NULL,
-                closed_at TIMESTAMP,
-                severity VARCHAR(32) NOT NULL,
-                outcome VARCHAR(128),
-                source_record_ref TEXT,
-                ingest_time TIMESTAMP NOT NULL
-            );
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS escalations (
-                escalation_id VARCHAR(64) PRIMARY KEY,
-                dataset_version_id VARCHAR(64) NOT NULL REFERENCES dataset_versions(dataset_version_id),
-                case_id VARCHAR(64) NOT NULL REFERENCES cases(case_id),
-                escalated_at TIMESTAMP NOT NULL,
-                level VARCHAR(64) NOT NULL,
-                target VARCHAR(128) NOT NULL,
-                source_record_ref TEXT,
-                ingest_time TIMESTAMP NOT NULL
-            );
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS actions (
-                action_id VARCHAR(64) PRIMARY KEY,
-                dataset_version_id VARCHAR(64) NOT NULL REFERENCES dataset_versions(dataset_version_id),
-                case_id VARCHAR(64) NOT NULL REFERENCES cases(case_id),
-                action_type VARCHAR(128) NOT NULL,
-                performed_at TIMESTAMP NOT NULL,
-                outcome VARCHAR(128),
-                source_record_ref TEXT,
-                ingest_time TIMESTAMP NOT NULL
-            );
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS closures (
-                closure_id VARCHAR(64) PRIMARY KEY,
-                dataset_version_id VARCHAR(64) NOT NULL REFERENCES dataset_versions(dataset_version_id),
-                case_id VARCHAR(64) NOT NULL REFERENCES cases(case_id),
-                closed_at TIMESTAMP NOT NULL,
-                reason VARCHAR(256) NOT NULL,
-                reviewer VARCHAR(128),
-                source_record_ref TEXT,
-                ingest_time TIMESTAMP NOT NULL
-            );
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS coverage_observations (
-                observation_id VARCHAR(64) PRIMARY KEY,
-                dataset_version_id VARCHAR(64) NOT NULL REFERENCES dataset_versions(dataset_version_id),
-                cse_id VARCHAR(64) NOT NULL REFERENCES cse(cse_id),
-                asset_id VARCHAR(64),
-                alert_category VARCHAR(128),
-                period_id VARCHAR(64) NOT NULL REFERENCES reporting_periods(reporting_period_id),
-                expected_count NUMERIC NOT NULL,
-                observed_count NUMERIC NOT NULL,
-                source_record_ref TEXT,
-                ingest_time TIMESTAMP NOT NULL
-            );
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS rulesets (
-                ruleset_id VARCHAR(64) PRIMARY KEY,
-                ruleset_name VARCHAR(128) NOT NULL,
-                version VARCHAR(64) NOT NULL,
-                weights_json TEXT NOT NULL,
-                author VARCHAR(128),
-                rationale TEXT,
-                effective_date TIMESTAMP NOT NULL,
-                is_active BOOLEAN DEFAULT false,
-                UNIQUE (ruleset_name, version)
-            );
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS analysis_runs (
-                analysis_run_id VARCHAR(64) PRIMARY KEY,
-                dataset_id VARCHAR(64),
-                dataset_version_id VARCHAR(64) NOT NULL REFERENCES dataset_versions(dataset_version_id),
-                schema_version VARCHAR(32) NOT NULL DEFAULT '2.0.0',
-                ruleset_id VARCHAR(64),
-                ruleset_version VARCHAR(64) NOT NULL DEFAULT 'V1',
-                detector_config TEXT,
-                app_version VARCHAR(32) NOT NULL DEFAULT '1.0.0',
-                git_commit VARCHAR(64),
-                model_version_id VARCHAR(64),
-                started_at TIMESTAMP NOT NULL,
-                finished_at TIMESTAMP,
-                status VARCHAR(32) NOT NULL DEFAULT 'COMPLETED',
-                error_message TEXT,
-                findings_count INTEGER NOT NULL DEFAULT 0
-            );
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS findings (
-                finding_id VARCHAR(64) PRIMARY KEY,
-                cse_id VARCHAR(64) NOT NULL REFERENCES cse(cse_id),
-                reporting_period_id VARCHAR(64) NOT NULL,
-                finding_type VARCHAR(64) NOT NULL,
-                priority_score NUMERIC NOT NULL,
-                priority_components TEXT NOT NULL,
-                evidentiary_confidence NUMERIC NOT NULL,
-                data_quality_score NUMERIC NOT NULL,
-                data_quality_components TEXT NOT NULL,
-                expectation_basis VARCHAR(64) NOT NULL,
-                expected_behavior TEXT NOT NULL,
-                observed_behavior TEXT NOT NULL,
-                supporting_signals TEXT NOT NULL,
-                contradicting_signals TEXT NOT NULL,
-                peer_context TEXT,
-                temporal_context TEXT,
-                analytical_method VARCHAR(128) NOT NULL,
-                ruleset_id VARCHAR(64),
-                ruleset_version VARCHAR(64),
-                model_version_id VARCHAR(64),
-                model_version VARCHAR(64),
-                dataset_version_id VARCHAR(64) NOT NULL REFERENCES dataset_versions(dataset_version_id),
-                analysis_run_id VARCHAR(64) NOT NULL,
-                review_status VARCHAR(64),
-                review_notes TEXT,
-                created_at TIMESTAMP NOT NULL,
-                superseded_by VARCHAR(64)
-            );
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS finding_evidence (
-                finding_id VARCHAR(64) NOT NULL REFERENCES findings(finding_id),
-                entity_type VARCHAR(64) NOT NULL,
-                entity_id VARCHAR(64) NOT NULL,
-                PRIMARY KEY (finding_id, entity_type, entity_id)
-            );
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS review_decisions (
-                review_decision_id VARCHAR(64) PRIMARY KEY,
-                finding_id VARCHAR(64) NOT NULL REFERENCES findings(finding_id),
-                decision VARCHAR(64) NOT NULL,
-                reviewer_id VARCHAR(64),
-                reviewer_name VARCHAR(128),
-                decided_at TIMESTAMP NOT NULL,
-                notes TEXT
-            );
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS audit_events (
-                audit_event_id VARCHAR(64) PRIMARY KEY,
-                user_id VARCHAR(64),
-                username VARCHAR(128),
-                action VARCHAR(128) NOT NULL,
-                target_type VARCHAR(64),
-                target_id VARCHAR(128),
-                occurred_at TIMESTAMP NOT NULL,
-                details_json TEXT
-            );
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS evidence_messages (
-                message_id VARCHAR(64) PRIMARY KEY,
-                finding_id VARCHAR(64) NOT NULL,
-                evidence_id VARCHAR(128),
-                sender_id VARCHAR(64) NOT NULL,
-                sender_name VARCHAR(128) NOT NULL,
-                sender_role VARCHAR(64) NOT NULL,
-                recipient VARCHAR(128) NOT NULL,
-                message TEXT NOT NULL,
-                sent_at TIMESTAMP NOT NULL
-            );
-            """,
-        ]
+        """Applies pending migrations from database/migrations/ and seeds required reference data."""
+        from database.migrate import run_migrations
 
+        run_migrations(self.engine)
+        self._seed_reference_data()
+
+    def _seed_reference_data(self):
+        """Seeds roles, default ruleset, and demo users when the database is empty."""
         with self.engine.begin() as conn:
-            for stmt in ddl_statements:
-                conn.execute(text(stmt))
-
             # Seed default roles if not present
             role_rows = conn.execute(text("SELECT COUNT(*) FROM roles")).scalar()
             if not role_rows:
@@ -593,7 +312,6 @@ class PostgresRepository(BaseSATRepository):
                 if ds_id in self.datasets:
                     self.datasets[ds_id].versions.append(ver_meta)
                 self.dataset_versions[ver_id] = ver_meta
-                self.active_dataset_version_id = ver_id
 
                 # 4. Reconstitute Canonical Entities for this version
                 canonical_ds = self._reconstitute_canonical_dataset(conn, ver_id)
@@ -701,6 +419,24 @@ class PostgresRepository(BaseSATRepository):
                 if f_id in self.findings_by_id:
                     self.findings_by_id[f_id].review_status = dec_state
                     self.findings_by_id[f_id].review_notes = rr["notes"]
+
+        # 7. Restore durable active dataset version from app_settings
+        persisted_active = self._load_setting("active_dataset_version_id")
+        if persisted_active:
+            try:
+                persisted_uuid = UUID(persisted_active)
+                if persisted_uuid in self.dataset_versions:
+                    self.active_dataset_version_id = persisted_uuid
+                    logger.info("Restored active dataset version from app_settings: %s", persisted_active)
+                else:
+                    logger.warning("Persisted active version %s not found in loaded versions; falling back.", persisted_active)
+            except (ValueError, AttributeError):
+                logger.warning("Invalid active version setting value: %s", persisted_active)
+
+        # Fallback: if no persisted active version, use the most recently loaded version
+        if self.active_dataset_version_id is None and self.dataset_versions:
+            self.active_dataset_version_id = list(self.dataset_versions.keys())[-1]
+            logger.info("No persisted active version; defaulting to latest: %s", self.active_dataset_version_id)
 
     def _reconstitute_canonical_dataset(self, conn: sa.Connection, ver_id: UUID) -> CanonicalDataset:
         """Reads relational rows for a given dataset_version_id and returns a CanonicalDataset."""
@@ -1186,6 +922,82 @@ class PostgresRepository(BaseSATRepository):
 
     def get_audit_events(self, limit: int = 100) -> list[AuditEvent]:
         return self.audit_events[:limit]
+
+    def get_user_by_username(self, username: str) -> dict[str, Any] | None:
+        with self.engine.connect() as conn:
+            return conn.execute(text("""
+                SELECT u.user_id, u.username, u.password_hash, r.role_name, u.full_name, u.created_at
+                FROM users u LEFT JOIN roles r ON r.role_id = u.role_id
+                WHERE lower(u.username) = :username AND u.is_active = 1
+            """), {"username": username.lower().strip()}).mappings().first()
+
+    def get_user_by_id(self, user_id: str) -> dict[str, Any] | None:
+        with self.engine.connect() as conn:
+            return conn.execute(text("""
+                SELECT u.user_id, u.username, u.password_hash, r.role_name, u.full_name, u.created_at
+                FROM users u LEFT JOIN roles r ON r.role_id = u.role_id
+                WHERE u.user_id = :user_id AND u.is_active = 1
+            """), {"user_id": user_id}).mappings().first()
+
+    def list_users(self) -> list[dict[str, Any]]:
+        with self.engine.connect() as conn:
+            return conn.execute(text("""
+                SELECT u.user_id, u.username, u.password_hash, r.role_name, u.full_name, u.created_at
+                FROM users u LEFT JOIN roles r ON r.role_id = u.role_id
+                WHERE u.is_active = 1
+            """)).mappings().all()
+
+    def set_active_dataset_version(
+        self, dataset_version_id: UUID, user_id: str, username: str
+    ) -> DatasetVersionMetadata:
+        if dataset_version_id not in self.dataset_versions:
+            raise KeyError(dataset_version_id)
+        previous_version_id = self.active_dataset_version_id
+        self.active_dataset_version_id = dataset_version_id
+
+        # Persist active version to durable app_settings so it survives restart
+        self._persist_setting("active_dataset_version_id", str(dataset_version_id))
+
+        self.record_audit_event(
+            user_id=user_id,
+            username=username,
+            action="SET_ACTIVE_DATASET_VERSION",
+            target_type="dataset_version",
+            target_id=str(dataset_version_id),
+            details={"previous_dataset_version_id": str(previous_version_id) if previous_version_id else None},
+        )
+        return self.dataset_versions[dataset_version_id]
+
+    # -----------------------------------------------------------------------
+    # Durable Application Settings
+    # -----------------------------------------------------------------------
+    def _persist_setting(self, key: str, value: str) -> None:
+        """Upserts a key-value pair into the app_settings table."""
+        now_str = datetime.now(timezone.utc).isoformat()
+        with self.engine.begin() as conn:
+            existing = conn.execute(
+                text("SELECT setting_key FROM app_settings WHERE setting_key = :key"),
+                {"key": key},
+            ).first()
+            if existing:
+                conn.execute(
+                    text("UPDATE app_settings SET setting_value = :val, updated_at = :ts WHERE setting_key = :key"),
+                    {"key": key, "val": value, "ts": now_str},
+                )
+            else:
+                conn.execute(
+                    text("INSERT INTO app_settings (setting_key, setting_value, updated_at) VALUES (:key, :val, :ts)"),
+                    {"key": key, "val": value, "ts": now_str},
+                )
+
+    def _load_setting(self, key: str) -> Optional[str]:
+        """Reads a setting value from the app_settings table, returning None if absent."""
+        with self.engine.connect() as conn:
+            row = conn.execute(
+                text("SELECT setting_value FROM app_settings WHERE setting_key = :key"),
+                {"key": key},
+            ).first()
+            return row[0] if row else None
 
     # -----------------------------------------------------------------------
     # Datasets & Versions Persistence
@@ -1691,6 +1503,8 @@ class PostgresRepository(BaseSATRepository):
             self.findings_by_id[f.finding_id] = f
 
         self.active_dataset_version_id = ver_id
+        self._persist_setting("active_dataset_version_id", str(ver_id))
+
 
         self.record_audit_event(
             user_id="system",

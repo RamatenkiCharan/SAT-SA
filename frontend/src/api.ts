@@ -11,21 +11,19 @@ import type {
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
-let _authToken: string | null = typeof window !== "undefined" ? localStorage.getItem("sat_auth_token") : null;
+// Keep the bearer token only for the lifetime of the current page.  Persisting it
+// in localStorage turns any future XSS into a long-lived session compromise.
+let _authToken: string | null = null;
 
 export function setAuthToken(token: string | null) {
   _authToken = token;
-  if (typeof window !== "undefined") {
-    if (token) localStorage.setItem("sat_auth_token", token);
-    else localStorage.removeItem("sat_auth_token");
-  }
 }
 
 export function getAuthToken(): string | null {
   return _authToken;
 }
 
-export async function login(username: string = "admin", password: string = "Admin@SAT2026!"): Promise<any> {
+export async function login(username: string, password: string): Promise<any> {
   const res = await fetch(`${API_BASE}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -42,50 +40,17 @@ export async function login(username: string = "admin", password: string = "Admi
   return data;
 }
 
-export async function ensureAuthenticated(): Promise<string> {
-  if (_authToken) {
-    return _authToken;
-  }
-  try {
-    const data = await login("admin", "Admin@SAT2026!");
-    return data.access_token || "";
-  } catch (err) {
-    console.warn("Auto-login failed:", err);
-    return "";
-  }
-}
-
-// Auto-seed session on initial load
-if (typeof window !== "undefined" && !_authToken) {
-  ensureAuthenticated().catch(() => {});
-}
-
 export async function fetchCurrentUser(): Promise<any> {
   return authFetch(`${API_BASE}/auth/me`);
 }
 
 async function authFetch(url: string, options: RequestInit = {}): Promise<any> {
-  if (!_authToken) {
-    await ensureAuthenticated();
-  }
+  if (!_authToken) throw new Error("Authentication is required. Please sign in.");
   const headers = new Headers(options.headers || {});
   if (_authToken && !headers.has("Authorization")) {
     headers.set("Authorization", `Bearer ${_authToken}`);
   }
   let res = await fetch(url, { ...options, headers });
-  if (res.status === 401) {
-    // Retry once with fresh login token
-    try {
-      const authRes = await login("admin", "Admin@SAT2026!");
-      if (authRes.access_token) {
-        const retryHeaders = new Headers(options.headers || {});
-        retryHeaders.set("Authorization", `Bearer ${authRes.access_token}`);
-        res = await fetch(url, { ...options, headers: retryHeaders });
-      }
-    } catch {
-      // ignore
-    }
-  }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(err.detail || `Request failed with status ${res.status}`);

@@ -23,10 +23,18 @@ from uuid import UUID, uuid4
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy.exc import SQLAlchemyError
 
-_SECRET_KEY = os.environ.get("SAT_SECRET_KEY") or secrets.token_hex(32)
+_SECRET_KEY = os.environ.get("SAT_SECRET_KEY")
+if not _SECRET_KEY:
+    if os.environ.get("SAT_ENV", "development").lower() in {"development", "dev", "test"}:
+        # Deliberately stable only for local development: reloads do not revoke
+        # sessions, while production refuses to start without a configured key.
+        _SECRET_KEY = "development-only-key-not-for-deployment"
+    else:
+        raise RuntimeError("SAT_SECRET_KEY must be configured outside development.")
 _PBKDF2_ITERATIONS = 100_000
-_DEFAULT_TOKEN_EXPIRY_SECONDS = 86400  # 24 hours
+_DEFAULT_TOKEN_EXPIRY_SECONDS = 3600
 
 _bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -47,6 +55,10 @@ class UserRecord:
     role: str
     full_name: str
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class AuthenticationBackendError(RuntimeError):
+    """The configured durable identity store could not be queried safely."""
 
 
 # ---------------------------------------------------------------------------
@@ -212,7 +224,59 @@ class UserStore:
                 full_name=full_name,
             )
 
+    @staticmethod
+    def _record_from_row(row: Any) -> UserRecord:
+        created_at = row["created_at"]
+        if isinstance(created_at, str):
+            created_at = datetime.fromisoformat(created_at)
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+        return UserRecord(
+            user_id=str(row["user_id"]), username=str(row["username"]),
+            hashed_password=str(row["password_hash"]), role=str(row["role_name"] or "analyst"),
+            full_name=str(row["full_name"] or ""), created_at=created_at,
+        )
+
+    def _durable_repository(self):
+        from backend.repositories.in_memory_repo import InMemoryRepository, get_repository
+        repo = get_repository()
+        return None if isinstance(repo, InMemoryRepository) else repo
+
     def get_by_username(self, username: str) -> Optional[UserRecord]:
+        uname = username.lower().strip()
+        repo = self._durable_repository()
+        if repo is not None:
+            try:
+                row = repo.get_user_by_username(uname)
+            except SQLAlchemyError as exc:
+                raise AuthenticationBackendError("Durable user lookup failed") from exc
+            return self._record_from_row(row) if row else None
+        return self._users.get(uname)
+
+    def get_by_id(self, user_id: str) -> Optional[UserRecord]:
+        repo = self._durable_repository()
+        if repo is not None:
+            try:
+                row = repo.get_user_by_id(user_id)
+            except SQLAlchemyError as exc:
+                raise AuthenticationBackendError("Durable user lookup failed") from exc
+            return self._record_from_row(row) if row else None
+        for user in self._users.values():
+            if user.user_id == user_id:
+                return user
+        return None
+
+    def list_users(self) -> list[UserRecord]:
+        repo = self._durable_repository()
+        if repo is not None:
+            try:
+                return [self._record_from_row(row) for row in repo.list_users()]
+            except SQLAlchemyError as exc:
+                raise AuthenticationBackendError("Durable user lookup failed") from exc
+        return list(self._users.values())
+
+    def _legacy_get_by_username(self, username: str) -> Optional[UserRecord]:
+        """Deprecated implementation retained temporarily for compatibility review."""
         uname = username.lower().strip()
         try:
             from backend.repositories.base import BaseSATRepository
@@ -249,7 +313,7 @@ class UserStore:
             pass
         return self._users.get(uname)
 
-    def get_by_id(self, user_id: str) -> Optional[UserRecord]:
+    def _legacy_get_by_id_database(self, user_id: str) -> Optional[UserRecord]:
         try:
             from backend.repositories.in_memory_repo import get_repository
             from backend.repositories.postgres_repo import PostgresRepository
@@ -287,7 +351,7 @@ class UserStore:
                 return u
         return None
 
-    def list_users(self) -> list[UserRecord]:
+    def _legacy_list_users_database(self) -> list[UserRecord]:
         try:
             from backend.repositories.in_memory_repo import get_repository
             from backend.repositories.postgres_repo import PostgresRepository

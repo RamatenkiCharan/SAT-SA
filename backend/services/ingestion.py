@@ -9,8 +9,10 @@ from __future__ import annotations
 
 import csv
 import hashlib
+import ijson
 import io
 import json
+import codecs
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
@@ -179,11 +181,18 @@ class IngestionResult:
 
 
 
-def detect_format(filename: str, contents: bytes) -> FileFormat:
-    """Detects and verifies file format against supported types."""
-    if len(contents) > _MAX_FILE_SIZE_BYTES:
+def detect_format(filename: str, file_obj: Any) -> FileFormat:
+    """Detects and verifies file format against supported types using bounded sniffing."""
+    if isinstance(file_obj, bytes):
+        file_obj = io.BytesIO(file_obj)
+        
+    file_obj.seek(0, io.SEEK_END)
+    file_size = file_obj.tell()
+    file_obj.seek(0)
+    
+    if file_size > _MAX_FILE_SIZE_BYTES:
         raise IngestionValidationError(
-            f"File size exceeds maximum allowed limit ({len(contents)} > {_MAX_FILE_SIZE_BYTES} bytes)."
+            f"File size exceeds maximum allowed limit ({file_size} > {_MAX_FILE_SIZE_BYTES} bytes)."
         )
 
     fn_lower = filename.lower()
@@ -193,7 +202,9 @@ def detect_format(filename: str, contents: bytes) -> FileFormat:
         return FileFormat.JSON
 
     # Fallback content sniffing
-    snippet = contents[:1024].decode("utf-8", errors="ignore").strip()
+    snippet = file_obj.read(1024).decode("utf-8", errors="ignore").strip()
+    file_obj.seek(0)
+    
     if snippet.startswith("{") or snippet.startswith("["):
         return FileFormat.JSON
     if "," in snippet or "\t" in snippet:
@@ -204,72 +215,81 @@ def detect_format(filename: str, contents: bytes) -> FileFormat:
     )
 
 
-def parse_raw_payload(contents: bytes, file_format: FileFormat) -> tuple[dict[str, list[dict[str, Any]]], list[str]]:
-    """Parses raw binary contents into structured raw entity dictionaries."""
+def parse_raw_payload(file_obj: Any, file_format: FileFormat) -> tuple[dict[str, list[dict[str, Any]]], list[str]]:
+    """Parses raw binary stream into structured raw entity dictionaries using bounded/streaming parsing."""
+    if isinstance(file_obj, bytes):
+        file_obj = io.BytesIO(file_obj)
+
     parse_warnings: list[str] = []
 
     if file_format == FileFormat.JSON:
+        bundle: dict[str, list[dict[str, Any]]] = {}
+        known_entity_keys = {
+            "cse", "reporting_periods", "assets", "alerts",
+            "investigations", "cases", "escalations", "actions",
+            "closures", "coverage_observations",
+        }
+        
         try:
-            text = contents.decode("utf-8")
-            data = json.loads(text)
-        except UnicodeDecodeError as exc:
-            raise IngestionValidationError(f"Invalid UTF-8 encoding in JSON: {exc}") from exc
-        except json.JSONDecodeError as exc:
-            raise IngestionValidationError(f"Malformed JSON: {exc}") from exc
-
-        if isinstance(data, list):
-            # Array of objects
-            for idx, item in enumerate(data):
-                if not isinstance(item, dict):
-                    raise IngestionValidationError(f"Item {idx} in JSON array is not an object.")
-            return {"alerts": data}, parse_warnings
-
-        elif isinstance(data, dict):
-            known_entity_keys = {
-                "cse",
-                "reporting_periods",
-                "assets",
-                "alerts",
-                "investigations",
-                "cases",
-                "escalations",
-                "actions",
-                "closures",
-                "coverage_observations",
-            }
-            if any(k in data for k in known_entity_keys):
-                bundle: dict[str, list[dict[str, Any]]] = {}
-                for k, v in data.items():
+            # Check if it's an array of objects
+            parser = ijson.parse(file_obj)
+            is_array = False
+            for prefix, event, value in parser:
+                if prefix == '' and event == 'start_array':
+                    is_array = True
+                break
+                
+            file_obj.seek(0)
+            
+            if is_array:
+                bundle["alerts"] = []
+                for item in ijson.items(file_obj, 'item'):
+                    if not isinstance(item, dict):
+                        raise IngestionValidationError("Item in JSON array is not an object.")
+                    bundle["alerts"].append(item)
+                return bundle, parse_warnings
+                
+            # Object mapping
+            file_obj.seek(0)
+            has_known_keys = False
+            for k, v in ijson.kvitems(file_obj, ''):
+                if k in known_entity_keys:
+                    has_known_keys = True
                     if isinstance(v, list):
                         bundle[k] = [item for item in v if isinstance(item, dict)]
                     else:
                         parse_warnings.append(f"Entity key '{k}' expected list of objects, got {type(v).__name__}.")
-                return bundle, parse_warnings
-            else:
-                # Single record dictionary
-                return {"alerts": [data]}, parse_warnings
-        else:
-            raise IngestionValidationError("Top-level JSON must be an object or array of objects.")
+            
+            if not has_known_keys:
+                file_obj.seek(0)
+                # It's a single record dictionary
+                record = next(ijson.items(file_obj, ''), None)
+                if not isinstance(record, dict):
+                    raise IngestionValidationError("Top-level JSON must be an object or array of objects.")
+                bundle["alerts"] = [record]
+                
+            return bundle, parse_warnings
+            
+        except ijson.JSONError as exc:
+            raise IngestionValidationError(f"Malformed JSON: {exc}") from exc
 
     elif file_format == FileFormat.CSV:
         try:
-            text = contents.decode("utf-8-sig")
+            text_stream = codecs.iterdecode(file_obj, "utf-8-sig")
+            reader = csv.DictReader(text_stream)
+            if reader.fieldnames is None:
+                raise IngestionValidationError("CSV has no header row.")
+
+            rows: list[dict[str, Any]] = []
+            for idx, row in enumerate(reader):
+                if None in row:
+                    parse_warnings.append(f"CSV Row {idx + 1}: contains extra columns beyond header definition.")
+                clean_row = {k: v for k, v in row.items() if k is not None}
+                rows.append(clean_row)
+
+            return {"alerts": rows}, parse_warnings
         except UnicodeDecodeError as exc:
             raise IngestionValidationError(f"Invalid UTF-8 encoding in CSV: {exc}") from exc
-
-        reader = csv.DictReader(io.StringIO(text))
-        if reader.fieldnames is None:
-            raise IngestionValidationError("CSV has no header row.")
-
-        rows: list[dict[str, Any]] = []
-        for idx, row in enumerate(reader):
-            if None in row:
-                parse_warnings.append(f"CSV Row {idx + 1}: contains extra columns beyond header definition.")
-            # Remove DictReader None key if present
-            clean_row = {k: v for k, v in row.items() if k is not None}
-            rows.append(clean_row)
-
-        return {"alerts": rows}, parse_warnings
 
     raise IngestionValidationError(f"Unhandled file format: {file_format}")
 
@@ -433,11 +453,14 @@ def validate_and_canonicalize_bundle(
     # 3. Validate & Canonicalize Alerts
     alert_rows = raw_bundle.get("alerts", [])
     total_input_rows += len(alert_rows)
+    default_cse_id = accepted_cse[0].cse_id if accepted_cse else uuid4()
+    default_rep_id = uuid4()
+    
     for idx, raw_row in enumerate(alert_rows):
+        row_reasons: list[str] = []
         mapped, unknown = _map_fields(raw_row, _ALERT_FIELD_ALIASES)
-        row_reasons = []
         if unknown:
-            warnings.append(f"Alert Row {idx + 1}: unmapped columns {unknown}")
+            warnings.append(f"Alert Row {idx + 1}: ignored unknown columns: {unknown}")
 
         # 1. Severity Validation & Normalization
         sev_raw: Optional[str] = None
@@ -520,9 +543,9 @@ def validate_and_canonicalize_bundle(
             rejection_reasons.append(f"Alert Row {idx + 1}: {'; '.join(row_reasons)}")
             rejected_details.append({"row_index": idx, "entity_type": "alert", "reasons": row_reasons, "raw_record": raw_row})
         else:
-            cse_id = _parse_uuid(mapped.get("cse_id")) if "cse_id" in mapped and mapped["cse_id"] else (accepted_cse[0].cse_id if accepted_cse else uuid4())
+            cse_id = _parse_uuid(mapped.get("cse_id")) if "cse_id" in mapped and mapped["cse_id"] else default_cse_id
             asset_id = _parse_uuid(mapped.get("asset_id")) if "asset_id" in mapped and mapped["asset_id"] else uuid4()
-            rep_id = _parse_uuid(mapped.get("reporting_period_id")) if "reporting_period_id" in mapped and mapped["reporting_period_id"] else uuid4()
+            rep_id = _parse_uuid(mapped.get("reporting_period_id")) if "reporting_period_id" in mapped and mapped["reporting_period_id"] else default_rep_id
 
             accepted_alerts.append(
                 Alert(
@@ -745,22 +768,29 @@ def validate_and_canonicalize_bundle(
 
 
 def ingest_file_stream(
-    contents: bytes,
-    filename: str,
+    file_obj: Any = None,
+    filename: str = "",
     dataset_id: Optional[UUID] = None,
     dataset_version_id: Optional[UUID] = None,
     repo: Optional[SATRepository] = None,
     dataset_name: Optional[str] = None,
     description: Optional[str] = None,
     ruleset: Optional[AnalyticalRuleset] = None,
+    contents: Any = None,
 ) -> IngestionResult:
     """
-    Unified Ingestion Entrypoint for CSV and JSON.
+    Unified Ingestion Entrypoint for CSV and JSON using streaming parsing.
     Executes:
       Detection -> Parsing -> Schema Mapping -> Validation ->
       Canonicalization -> Provenance -> Data Trust -> Analysis -> Persistence.
     All weights and detector thresholds are governed by versioned ruleset.
     """
+    if file_obj is None:
+        file_obj = contents
+        
+    if isinstance(file_obj, bytes):
+        file_obj = io.BytesIO(file_obj)
+
     now = datetime.now(timezone.utc)
     ds_id = dataset_id or uuid4()
     ver_id = dataset_version_id or uuid4()
@@ -768,21 +798,29 @@ def ingest_file_stream(
     desc = description or f"Operational evidence package ({filename})"
     active_ruleset = ruleset or RulesetService.get_active_ruleset(repo)
 
-    # 1. Format Detection
-    file_format = detect_format(filename, contents)
+    # 1. Format Detection (bounded)
+    file_format = detect_format(filename, file_obj)
 
-    # 2. SHA-256 Provenance
-    sha256_hash = hashlib.sha256(contents).hexdigest()
+    # 2. SHA-256 Provenance (streaming)
+    file_obj.seek(0)
+    hasher = hashlib.sha256()
+    file_size_bytes = 0
+    while chunk := file_obj.read(8192):
+        hasher.update(chunk)
+        file_size_bytes += len(chunk)
+    sha256_hash = hasher.hexdigest()
+    file_obj.seek(0)
+    
     provenance = IngestionProvenance(
         filename=filename,
         file_format=file_format.value,
         sha256_hash=sha256_hash,
-        file_size_bytes=len(contents),
+        file_size_bytes=file_size_bytes,
         upload_time=now,
     )
 
-    # 3. Parsing
-    raw_bundle, parse_warnings = parse_raw_payload(contents, file_format)
+    # 3. Parsing (bounded/streaming)
+    raw_bundle, parse_warnings = parse_raw_payload(file_obj, file_format)
 
     # 4. Schema Mapping, Validation & Canonicalization
     canonical_ds, val_summary = validate_and_canonicalize_bundle(raw_bundle, ver_id, now)

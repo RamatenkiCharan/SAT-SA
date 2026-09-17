@@ -65,6 +65,9 @@ class InMemoryRepository(BaseSATRepository):
         }
         self.active_ruleset_version: str = DEFAULT_AUTHORITATIVE_RULESET_V1.version
 
+    # Authentication records intentionally remain in UserStore for explicit
+    # ephemeral/test mode. Durable repositories override these methods.
+
 
 
     # -----------------------------------------------------------------------
@@ -94,6 +97,23 @@ class InMemoryRepository(BaseSATRepository):
 
     def get_audit_events(self, limit: int = 100) -> list[AuditEvent]:
         return self.audit_events[:limit]
+
+    def set_active_dataset_version(
+        self, dataset_version_id: UUID, user_id: str, username: str
+    ) -> DatasetVersionMetadata:
+        if dataset_version_id not in self.dataset_versions:
+            raise KeyError(dataset_version_id)
+        previous_version_id = self.active_dataset_version_id
+        self.active_dataset_version_id = dataset_version_id
+        self.record_audit_event(
+            user_id=user_id,
+            username=username,
+            action="SET_ACTIVE_DATASET_VERSION",
+            target_type="dataset_version",
+            target_id=str(dataset_version_id),
+            details={"previous_dataset_version_id": str(previous_version_id) if previous_version_id else None},
+        )
+        return self.dataset_versions[dataset_version_id]
 
     # -----------------------------------------------------------------------
     # Datasets & Versions
@@ -799,32 +819,20 @@ def get_repository() -> BaseSATRepository:
     """
     global _GLOBAL_REPO
     if _GLOBAL_REPO is None:
-        persistence_mode = os.environ.get("SAT_PERSISTENCE_MODE", "auto").lower()
+        persistence_mode = os.environ.get("SAT_PERSISTENCE_MODE", "sqlite").lower()
         if persistence_mode in ("memory", "in_memory"):
             _GLOBAL_REPO = InMemoryRepository()
+        elif persistence_mode == "sqlite":
+            from backend.repositories.postgres_repo import PostgresRepository
+            sqlite_path = os.environ.get("SAT_SQLITE_PATH", "satsa_local.db")
+            _GLOBAL_REPO = PostgresRepository(db_url=f"sqlite:///{sqlite_path}")
+            logger.info("Initialized SQLite-backed Repository at %s.", sqlite_path)
+        elif persistence_mode == "postgres":
+            from backend.repositories.postgres_repo import PostgresRepository
+            _GLOBAL_REPO = PostgresRepository()
+            logger.info("Initialized PostgreSQL Repository.")
         else:
-            try:
-                from backend.repositories.postgres_repo import PostgresRepository
-                _GLOBAL_REPO = PostgresRepository()
-                logger.info("Initialized persistent PostgreSQL Repository.")
-            except Exception as e:
-                # Do not silently degrade to non-persistent storage. Fall back to a
-                # local SQLite file so "restart-safe persistence" is true by default
-                # even when no Postgres instance/DATABASE_URL is configured.
-                logger.warning(
-                    "Could not connect to PostgreSQL (%s); falling back to local SQLite file.", e
-                )
-                try:
-                    from backend.repositories.postgres_repo import PostgresRepository
-                    sqlite_path = os.environ.get("SAT_SQLITE_PATH", "satsa_local.db")
-                    _GLOBAL_REPO = PostgresRepository(db_url=f"sqlite:///{sqlite_path}")
-                    logger.info("Initialized SQLite-backed Repository at %s.", sqlite_path)
-                except Exception as sqlite_err:
-                    logger.warning(
-                        "Could not initialize SQLite fallback (%s); using non-persistent InMemoryRepository.",
-                        sqlite_err,
-                    )
-                    _GLOBAL_REPO = InMemoryRepository()
+            raise ValueError("SAT_PERSISTENCE_MODE must be one of: sqlite, postgres, memory.")
     return _GLOBAL_REPO
 
 

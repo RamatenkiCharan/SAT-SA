@@ -119,18 +119,19 @@ async def upload_dataset_file(
     repo: SATRepository = Depends(get_repository),
     user: UserContext = Depends(require_supervisor),
 ):
-    contents = await file.read()
     filename = file.filename or "upload.json"
 
     try:
         ingest_res = ingest_file_stream(
-            contents=contents,
+            file_obj=file.file,
             filename=filename,
             repo=repo,
         )
     except IngestionValidationError as e:
         raise HTTPException(status_code=400, detail=f"Validation error: {str(e)}")
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=400, detail=f"Failed to process uploaded file: {str(e)}")
 
     return ingest_res.to_dict()
@@ -142,8 +143,9 @@ def switch_active_version(
     repo: SATRepository = Depends(get_repository),
     user: UserContext = Depends(require_supervisor),
 ):
-    if req.dataset_version_id not in repo.dataset_versions:
+    try:
+        repo.set_active_dataset_version(req.dataset_version_id, user.user_id, user.username)
+    except KeyError:
         raise HTTPException(status_code=404, detail="Dataset version not found.")
-    repo.active_dataset_version_id = req.dataset_version_id
     return {"status": "success", "active_version_id": str(req.dataset_version_id)}
 

@@ -8,13 +8,17 @@ Handles:
 """
 from __future__ import annotations
 
+import threading
+import time
+from collections import defaultdict, deque
 from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
 from backend.security.auth import (
     UserContext,
+    AuthenticationBackendError,
     UserStore,
     create_access_token,
     get_current_user,
@@ -24,6 +28,25 @@ from backend.security.auth import (
 )
 
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
+_LOGIN_WINDOW_SECONDS = 15 * 60
+_LOGIN_MAX_ATTEMPTS = 5
+_login_attempts: dict[str, deque[float]] = defaultdict(deque)
+_login_attempts_lock = threading.Lock()
+
+
+def _check_login_rate_limit(client_key: str) -> None:
+    now = time.monotonic()
+    with _login_attempts_lock:
+        attempts = _login_attempts[client_key]
+        while attempts and now - attempts[0] >= _LOGIN_WINDOW_SECONDS:
+            attempts.popleft()
+        if len(attempts) >= _LOGIN_MAX_ATTEMPTS:
+            raise HTTPException(status_code=429, detail="Too many login attempts. Try again later.")
+
+
+def _record_failed_login(client_key: str) -> None:
+    with _login_attempts_lock:
+        _login_attempts[client_key].append(time.monotonic())
 
 
 class LoginRequest(BaseModel):
@@ -42,21 +65,31 @@ class LoginResponse(BaseModel):
     status: str = "success"
     access_token: str
     token_type: str = "bearer"
-    expires_in: int = 86400
+    expires_in: int = 3600
     user: UserProfileResponse
 
 
 @router.post("/login", response_model=LoginResponse)
 def login(
     req: LoginRequest,
+    request: Request,
     user_store: UserStore = Depends(get_user_store),
 ):
     """
     Authenticates user credentials and issues a signed Bearer token.
     Rejects unknown users and invalid passwords with HTTP 401 Unauthorized.
     """
-    user_ctx = user_store.authenticate(req.username, req.password)
+    client_key = request.client.host if request.client else "unknown"
+    _check_login_rate_limit(client_key)
+    try:
+        user_ctx = user_store.authenticate(req.username, req.password)
+    except AuthenticationBackendError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Authentication service is temporarily unavailable.",
+        )
     if not user_ctx:
+        _record_failed_login(client_key)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid username or password.",
@@ -68,7 +101,7 @@ def login(
         status="success",
         access_token=token,
         token_type="bearer",
-        expires_in=86400,
+        expires_in=3600,
         user=UserProfileResponse(
             user_id=user_ctx.user_id,
             username=user_ctx.username,

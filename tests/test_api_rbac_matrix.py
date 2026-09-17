@@ -66,6 +66,27 @@ def test_public_auth_login_endpoint(client: TestClient):
     assert resp.json()["status"] == "success"
 
 
+def test_dataset_version_switch_is_attributed_in_audit_log(client: TestClient, auth_tokens: dict[str, str]):
+    """An evidence-context switch must leave an accountable audit record."""
+    repo = get_repository()
+    active_version_id = repo.active_dataset_version_id
+    assert active_version_id is not None
+    before = len(repo.audit_events)
+
+    response = client.post(
+        "/api/datasets/switch-version",
+        json={"dataset_version_id": str(active_version_id)},
+        headers={"Authorization": f"Bearer {auth_tokens['supervisor']}"},
+    )
+
+    assert response.status_code == 200
+    assert len(repo.audit_events) == before + 1
+    event = repo.audit_events[0]
+    assert event.action == "SET_ACTIVE_DATASET_VERSION"
+    assert event.username == "supervisor"
+    assert event.target_id == str(active_version_id)
+
+
 # ===========================================================================
 # 2. Authenticated Endpoints (analyst, supervisor, admin)
 # ===========================================================================

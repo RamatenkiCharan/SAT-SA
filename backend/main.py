@@ -6,6 +6,7 @@ and serves the React SPA frontend.
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+import os
 from pathlib import Path
 from uuid import uuid4
 
@@ -23,7 +24,7 @@ from backend.api.findings import router as findings_router
 from backend.api.reviews import router as reviews_router
 from backend.api.rulesets import router as rulesets_router
 from backend.api.validation import router as validation_router
-from backend.repositories.in_memory_repo import get_repository
+from backend.repositories.in_memory_repo import InMemoryRepository, get_repository
 
 
 
@@ -77,10 +78,12 @@ app = FastAPI(
 # Enable CORS for local web interface
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=os.environ.get(
+        "SAT_ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173,http://127.0.0.1:8000"
+    ).split(","),
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 # Mount API routers
@@ -103,6 +106,7 @@ def health() -> dict:
         "status": "ok",
         "service": "SAT-SA Supervisory Analytics Engine",
         "offline_mode": True,
+        "persistence": "EPHEMERAL" if isinstance(repo, InMemoryRepository) else "DURABLE",
         "active_version_id": str(repo.active_dataset_version_id) if repo.active_dataset_version_id else None,
         "datasets_count": len(repo.datasets),
         "audit_events_count": len(repo.audit_events),

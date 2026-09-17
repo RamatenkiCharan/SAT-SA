@@ -34,6 +34,15 @@ def export_supervisory_report(
     if not canonical_ds or not reconstructed_ds:
         raise HTTPException(status_code=404, detail="Dataset version records not found.")
 
+    repo.record_audit_event(
+        user_id=current_user.user_id,
+        username=current_user.username,
+        action="EXPORT_SUPERVISORY_REPORT",
+        target_type="dataset_version",
+        target_id=str(ver_id),
+        details={"requested_dataset_version_id": str(dataset_version_id) if dataset_version_id else None},
+    )
+
     findings_summary = []
     for f in findings:
         exp = generate_finding_explanation(f)

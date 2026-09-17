@@ -65,6 +65,10 @@ python run_app.py
 ```
 *(On Windows, you can also double-click `start.bat` or run `.\start.ps1`)*
 
+The local runner uses durable SQLite by default. Set `SAT_PERSISTENCE_MODE=postgres`
+only when `DATABASE_URL` is configured; set it to `memory` only for disposable tests.
+For Docker, copy `.env.example` to `.env` and replace both placeholders before starting.
+
 ### Option 2: Full Development Mode (Hot Reload)
 
 ```bash
@@ -89,10 +93,13 @@ Run all unit tests and end-to-end integration tests:
 python -m pytest tests/ -v
 ```
 
-### Validation Scorecard (§19.4 Independence Protocol):
-- **Tuning Scenario Split**: 100% Recall, 1.0 Top-K Recall, 0.71 F1 Score.
-- **Held-Out Scenario Split**: 100% Recall, 1.0 Top-K Recall, 0.71 F1 Score.
-- **Supervisory Review Yield**: 100% of all true operational weaknesses captured in the top 6 prioritized cases.
+### Validation limitations
+
+The bundled validation data is synthetic and must not be presented as production
+performance. Its current scenario distributions are intentionally controlled and
+too separable to make the headline precision/recall figures meaningful. Use the
+review-yield and Top-K measures as diagnostic outputs, not claims of field accuracy,
+until an overlapping held-out benchmark has been completed.
 
 ---
 

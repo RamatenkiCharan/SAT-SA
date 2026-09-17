@@ -109,6 +109,25 @@ class BaseSATRepository(ABC):
         """Retrieves recent audit events in reverse chronological order."""
         ...
 
+    def get_user_by_username(self, username: str) -> Any | None:
+        """Returns an active user record, or None when it does not exist."""
+        raise NotImplementedError
+
+    def get_user_by_id(self, user_id: str) -> Any | None:
+        """Returns an active user record, or None when it does not exist."""
+        raise NotImplementedError
+
+    def list_users(self) -> list[Any]:
+        """Returns active user records."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def set_active_dataset_version(
+        self, dataset_version_id: UUID, user_id: str, username: str
+    ) -> DatasetVersionMetadata:
+        """Changes the active evidence version and records the accountable action."""
+        ...
+
     @abstractmethod
     def register_dataset_version(
         self,

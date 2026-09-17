@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { LoginView } from "./components/LoginView";
 import { LandingHeroView } from "./components/LandingHeroView";
 import { Sidebar, type TabId } from "./components/Sidebar";
 import { Navbar } from "./components/Navbar";
@@ -13,7 +14,7 @@ import { AuditView } from "./components/AuditView";
 import { HelpView } from "./components/HelpView";
 import { ParticleBackground } from "./components/ParticleBackground";
 import type { DatasetItem, Finding } from "./types";
-import { fetchDatasets, fetchFindings, loadDemoDataset } from "./api";
+import { fetchDatasets, fetchFindings, loadDemoDataset, login, setAuthToken } from "./api";
 
 const TAB_TITLES: Record<TabId, string> = {
   overview: "Executive Overview",
@@ -27,6 +28,8 @@ const TAB_TITLES: Record<TabId, string> = {
 };
 
 export function App() {
+  const [authenticated, setAuthenticated] = useState(false);
+  const [loginError, setLoginError] = useState<string | undefined>();
   const [currentScreen, setCurrentScreen] = useState<"landing" | "command_center">("landing");
   const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
@@ -55,8 +58,21 @@ export function App() {
   };
 
   useEffect(() => {
-    refreshData();
-  }, []);
+    if (authenticated) refreshData();
+  }, [authenticated]);
+
+  const handleLogin = async (username: string, password: string) => {
+    setLoginError(undefined);
+    try {
+      await login(username, password);
+      setAuthenticated(true);
+    } catch (error) {
+      setAuthToken(null);
+      setLoginError(error instanceof Error ? error.message : "Authentication failed.");
+    }
+  };
+
+  if (!authenticated) return <LoginView error={loginError} onSubmit={handleLogin} />;
 
   const handleStartMonitoring = () => {
     setCurrentScreen("command_center");
