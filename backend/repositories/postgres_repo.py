@@ -1306,6 +1306,32 @@ class PostgresRepository(BaseSATRepository):
                     },
                 )
 
+            # 11.5 KPI Claims
+            for claim in canonical_dataset.kpi_claims:
+                conn.execute(
+                    text("""
+                    INSERT OR IGNORE INTO kpi_claims (
+                        claim_id, dataset_version_id, cse_id, reporting_period_id,
+                        metric_name, reported_value, target_value, population,
+                        context, source_record_ref, ingest_time
+                    )
+                    VALUES (:cid, :vid, :cseid, :repid, :mname, :rval, :tval, :pop, :ctx, :sref, :itime)
+                    """),
+                    {
+                        "cid": str(claim.claim_id),
+                        "vid": str(ver_id),
+                        "cseid": str(claim.cse_id),
+                        "repid": str(claim.reporting_period_id),
+                        "mname": claim.metric_name,
+                        "rval": claim.reported_value,
+                        "tval": claim.target_value,
+                        "pop": claim.population,
+                        "ctx": claim.context,
+                        "sref": claim.source_record_ref,
+                        "itime": claim.ingest_time.isoformat(),
+                    },
+                )
+
             # 12. Coverage Observations
             for cov in canonical_dataset.coverage_observations:
                 conn.execute(

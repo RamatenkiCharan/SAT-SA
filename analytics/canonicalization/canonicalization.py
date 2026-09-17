@@ -20,6 +20,7 @@ from backend.models.canonical import (
     CSE,
     Escalation,
     Investigation,
+    KPIClaim,
     ReportingPeriod,
     Severity,
 )
@@ -67,6 +68,7 @@ class CanonicalDataset:
         actions: Optional[list[Action]] = None,
         closures: Optional[list[Closure]] = None,
         coverage_observations: Optional[list[CoverageObservation]] = None,
+        kpi_claims: Optional[list[KPIClaim]] = None,
     ):
         self.dataset_version_id = dataset_version_id
         self.cse_list: list[CSE] = cse_list or []
@@ -79,6 +81,7 @@ class CanonicalDataset:
         self.actions: list[Action] = actions or []
         self.closures: list[Closure] = closures or []
         self.coverage_observations: list[CoverageObservation] = coverage_observations or []
+        self.kpi_claims: list[KPIClaim] = kpi_claims or []
 
 
 def canonicalize_records(

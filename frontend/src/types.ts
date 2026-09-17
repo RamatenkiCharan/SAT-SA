@@ -4,7 +4,9 @@ export type FindingType =
   | "FAST_CLOSURE"
   | "ESCALATION_GAP"
   | "REPEATED_UNRESOLVED_ALERTS"
-  | "COVERAGE_GAP";
+  | "COVERAGE_GAP"
+  | "SUPERVISORY_DIVERGENCE"
+  | "METRIC_OUTCOME_DIVERGENCE";
 
 export type ReviewDecisionState =
   | "CONFIRMED"

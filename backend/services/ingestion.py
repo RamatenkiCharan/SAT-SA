@@ -343,6 +343,14 @@ def _validate_datetime(val: Any) -> tuple[Optional[datetime], Optional[str]]:
     return None, f"Invalid date type: {type(val).__name__}"
 
 
+_KPI_CLAIM_FIELD_ALIASES = {
+    "metric_name": ["metric_name", "metric", "kpi_name", "kpi"],
+    "reported_value": ["reported_value", "value", "reported", "actual"],
+    "target_value": ["target_value", "target", "sla"],
+    "population": ["population", "scope", "asset_scope"],
+    "context": ["context", "severity", "notes"],
+}
+
 def validate_and_canonicalize_bundle(
     raw_bundle: dict[str, list[dict[str, Any]]],
     dataset_version_id: UUID,
@@ -360,6 +368,8 @@ def validate_and_canonicalize_bundle(
     accepted_actions: list[Action] = []
     accepted_closures: list[Closure] = []
     accepted_coverage_observations: list[CoverageObservation] = []
+    from backend.models.canonical import KPIClaim
+    accepted_kpi_claims: list[KPIClaim] = []
 
     rejection_reasons: list[str] = []
     rejected_details: list[dict[str, Any]] = []
@@ -677,6 +687,29 @@ def validate_and_canonicalize_bundle(
             )
         )
 
+    for claim_raw in raw_bundle.get("kpi_claims", []):
+        mapped, unknown = _map_fields(claim_raw, _KPI_CLAIM_FIELD_ALIASES)
+        c_id = _parse_uuid(mapped.get("claim_id")) if "claim_id" in mapped else uuid4()
+        cse_id = _parse_uuid(mapped.get("cse_id")) if "cse_id" in mapped else (accepted_cse[0].cse_id if accepted_cse else uuid4())
+        rep_id = _parse_uuid(mapped.get("reporting_period_id")) if "reporting_period_id" in mapped else (accepted_cse[0].reporting_period_id if accepted_cse else uuid4())
+        
+        if "metric_name" in mapped and "reported_value" in mapped:
+            accepted_kpi_claims.append(
+                KPIClaim(
+                    claim_id=c_id,
+                    cse_id=cse_id,
+                    reporting_period_id=rep_id,
+                    metric_name=str(mapped["metric_name"]),
+                    reported_value=float(mapped["reported_value"]),
+                    target_value=float(mapped["target_value"]) if "target_value" in mapped else None,
+                    population=str(mapped["population"]) if "population" in mapped else None,
+                    context=str(mapped["context"]) if "context" in mapped else None,
+                    dataset_version_id=dataset_version_id,
+                    source_record_ref=str(mapped.get("source_record_ref", f"claim_{c_id}")),
+                    ingest_time=now,
+                )
+            )
+
     # Standalone alert synthesis for baseline CSE & Assets if missing
     if accepted_alerts and not accepted_cse:
         default_cse_id = accepted_alerts[0].cse_id
@@ -750,6 +783,7 @@ def validate_and_canonicalize_bundle(
         actions=accepted_actions,
         closures=accepted_closures,
         coverage_observations=accepted_coverage_observations,
+        kpi_claims=accepted_kpi_claims,
     )
 
     accepted_count = len(accepted_alerts) + len(accepted_cse) + len(accepted_assets)

@@ -90,6 +90,8 @@ class FindingType(str, Enum):
     ESCALATION_GAP = "ESCALATION_GAP"            # FR-032
     REPEATED_UNRESOLVED_ALERTS = "REPEATED_UNRESOLVED_ALERTS"  # FR-033
     COVERAGE_GAP = "COVERAGE_GAP"                # FR-041
+    SUPERVISORY_DIVERGENCE = "SUPERVISORY_DIVERGENCE" # Innovation Phase 1
+    METRIC_OUTCOME_DIVERGENCE = "METRIC_OUTCOME_DIVERGENCE" # Innovation Phase 2
 
 
 class ExpectationBasis(str, Enum):
@@ -238,6 +240,21 @@ class PeerGroup(BaseModel):
     def below_minimum_size(self) -> bool:
         # SRS §7.7 FR-062: minimum peer-group size of 5.
         return self.size < 5
+
+
+class KPIClaim(ProvenanceMixin):
+    """
+    INNOVATION PHASE 1: A reported SOC KPI metric or SLA claim.
+    SAT-SA independently evaluates whether the underlying canonical evidence supports this claim.
+    """
+    claim_id: UUID
+    cse_id: UUID
+    reporting_period_id: UUID
+    metric_name: str = Field(..., description="e.g., 'SLA Compliance', 'Mean Time To Resolve'")
+    reported_value: float = Field(..., description="The value claimed by the SOC.")
+    target_value: Optional[float] = Field(None, description="The target SLA or goal.")
+    population: Optional[str] = Field(None, description="Scope of the claim (e.g., 'Critical Assets').")
+    context: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------

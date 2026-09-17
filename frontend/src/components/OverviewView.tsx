@@ -9,6 +9,7 @@ import {
   Zap,
 } from "lucide-react";
 import type { Finding } from "../types";
+import { MetricOutcomeCard } from "./MetricOutcomeCard";
 
 interface OverviewViewProps {
   findings: Finding[];
@@ -27,6 +28,9 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
   ).length;
   const coverageGapCount = findings.filter((f) => f.finding_type === "COVERAGE_GAP").length;
 
+  const divergenceFinding = findings.find(
+    (f) => f.finding_type === "METRIC_OUTCOME_DIVERGENCE"
+  );
   const wowFinding = findings.find(
     (f) => f.cse_name.includes("National Power") || f.finding_type === "FAST_CLOSURE"
   );
@@ -35,12 +39,15 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
     <div className="page-fade-enter" style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
       
       {/* "THE SUPERVISORY REALITY CHECK" — Goodhart's Law Operational Reality Banner */}
-      <div
-        className="glass-card hud-corner"
-        style={{
-          padding: "1.85rem",
-          background: "linear-gradient(135deg, rgba(12, 19, 36, 0.96) 0%, rgba(18, 30, 64, 0.8) 100%)",
-          border: "1px solid rgba(0, 216, 246, 0.35)",
+      {divergenceFinding ? (
+        <MetricOutcomeCard finding={divergenceFinding} onSelectFinding={onSelectFinding} />
+      ) : (
+        <div
+          className="glass-card hud-corner"
+          style={{
+            padding: "1.85rem",
+            background: "linear-gradient(135deg, rgba(12, 19, 36, 0.96) 0%, rgba(18, 30, 64, 0.8) 100%)",
+            border: "1px solid rgba(0, 216, 246, 0.35)",
           boxShadow: "0 12px 40px -8px rgba(0, 0, 0, 0.7), 0 0 25px rgba(0, 216, 246, 0.08)",
         }}
       >
@@ -121,8 +128,8 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
             </button>
           )}
         </div>
-
       </div>
+      )}
 
       {/* KPI Stats Cards */}
       <div className="stats-grid-4">

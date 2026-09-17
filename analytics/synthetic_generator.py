@@ -583,6 +583,18 @@ def generate_parameterized_scenario(
         "actions": [],
         "closures": [],
         "coverage_observations": [],
+        "kpi_claims": [
+            {
+                "claim_id": str(uuid4()),
+                "cse_id": str(cse_id),
+                "reporting_period_id": str(rep_id),
+                "metric_name": "SLA Compliance",
+                "reported_value": p.self_reported_sla,
+                "target_value": 60.0,
+                "population": "All Alerts",
+                "context": p.description,
+            }
+        ],
     }
 
     gt_scenario = GroundTruthScenario(
@@ -813,6 +825,7 @@ def generate_synthetic_soc_benchmark(
         "actions": [],
         "closures": [],
         "coverage_observations": [],
+        "kpi_claims": [],
     }
 
     scenarios: list[GroundTruthScenario] = []
@@ -860,15 +873,26 @@ def run_full_analytical_pipeline(
     escalation_gap_detector = EscalationGapDetector(config=active_ruleset.detector_config.escalation_gap)
     repeated_unresolved_detector = RepeatedUnresolvedDetector(config=active_ruleset.detector_config.repeated_unresolved)
     coverage_gap_detector = CoverageGapDetector(config=active_ruleset.detector_config.coverage_gap)
+    from analytics.kpi_integrity.divergence_detector import ClaimEvidenceDivergenceDetector
+    from analytics.kpi_integrity.outcome_divergence import MetricOutcomeDivergenceDetector
+    kpi_detector = ClaimEvidenceDivergenceDetector(ruleset=active_ruleset)
+    outcome_detector = MetricOutcomeDivergenceDetector(ruleset=active_ruleset)
 
     fast_closures = fast_closure_detector.detect(reconstructed_ds, benchmark_engine)
     escalation_gaps = escalation_gap_detector.detect(reconstructed_ds)
     repeated_unresolved = repeated_unresolved_detector.detect(reconstructed_ds)
     coverage_gaps = coverage_gap_detector.detect(canonical_ds, dq_result.score)
+    kpi_findings = kpi_detector.detect(canonical_ds, reconstructed_ds, dq_result, analysis_run_id)
+    outcome_findings = outcome_detector.detect(canonical_ds, reconstructed_ds, dq_result, benchmark_engine, analysis_run_id)
 
     # 6. Evidence Fusion
     fusion_engine = EvidenceFusionEngine(ruleset=active_ruleset)
     all_findings: list[Finding] = []
+    
+    # Pre-add KPI findings to all_findings since fusion engine might not fuse them
+    # if they are standalone supervisory findings. Actually, let's just append them.
+    all_findings.extend(kpi_findings)
+    all_findings.extend(outcome_findings)
 
     for cse in canonical_ds.cse_list:
         rep_id = cse.reporting_period_id
@@ -972,6 +996,7 @@ def evaluate_ground_truth_validation(
         "ESCALATION_GAP",
         "REPEATED_UNRESOLVED_ALERTS",
         "COVERAGE_GAP",
+        "METRIC_OUTCOME_DIVERGENCE"
     ]
 
     # Build ground truth weakness map
@@ -986,6 +1011,12 @@ def evaluate_ground_truth_validation(
             gt_set.add("REPEATED_UNRESOLVED_ALERTS")
         if s.has_coverage_gap and not s.is_data_outage:
             gt_set.add("COVERAGE_GAP")
+            
+        # Metric Outcome Divergence: high KPI but poor operational behavior
+        if (s.has_fast_closure or s.has_escalation_gap or s.has_repeated_unresolved) and s.self_reported_sla >= 0.90:
+            if not s.is_data_outage:
+                gt_set.add("METRIC_OUTCOME_DIVERGENCE")
+                
         gt_map[s.cse_id] = gt_set
 
     # Tally detections
