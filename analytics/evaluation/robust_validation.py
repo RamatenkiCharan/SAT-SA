@@ -592,10 +592,10 @@ def _run_pipeline_for_scenarios(
     configs: list[dict[str, Any]],
     seed: int,
     ruleset: AnalyticalRuleset,
-) -> tuple[list[GroundTruthScenario], list[Finding]]:
+) -> tuple[list[GroundTruthScenario], list[Finding], dict[str, list[dict[str, Any]]]]:
     """
     Runs the full analytical pipeline on a list of scenario configs.
-    Returns scenarios and findings.
+    Returns scenarios, findings, and the combined raw bundle.
     """
     rng = random.Random(seed)
     now = datetime.now(timezone.utc)
@@ -623,7 +623,7 @@ def _run_pipeline_for_scenarios(
         ruleset=ruleset,
         dataset_version_id=ver_id,
     )
-    return all_scenarios, pipeline_res.findings
+    return all_scenarios, pipeline_res.findings, combined_bundle
 
 
 # ---------------------------------------------------------------------------
@@ -668,12 +668,12 @@ class RobustValidationEngine:
         )
 
         # 2. Run pipeline on tuning set
-        tuning_scenarios, tuning_findings = _run_pipeline_for_scenarios(
+        tuning_scenarios, tuning_findings, _ = _run_pipeline_for_scenarios(
             tuning_cfgs, seed=seed + 1000, ruleset=self.ruleset,
         )
 
         # 3. Run pipeline on held-out set (different seed — no information leakage)
-        held_out_scenarios, held_out_findings = _run_pipeline_for_scenarios(
+        held_out_scenarios, held_out_findings, held_out_bundle = _run_pipeline_for_scenarios(
             held_out_cfgs, seed=seed + 2000, ruleset=self.ruleset,
         )
 
@@ -728,9 +728,43 @@ class RobustValidationEngine:
             held_out_scenarios, held_out_findings,
         )
         _, _, base_f1, _ = _metrics_from_confusion(base_tp, base_fp, base_tn, base_fn)
-        # Note: true weight sensitivity requires re-running the pipeline with
-        # perturbed weights. For the baseline correction, we document this as
-        # requiring implementation. The framework records the structure.
+
+        from dataclasses import replace
+
+        weights_to_perturb = [
+            "signal_strength_weight",
+            "peer_deviation_weight",
+            "persistence_weight",
+            "asset_criticality_weight",
+            "data_uncertainty_weight",
+        ]
+
+        for w_name in weights_to_perturb:
+            orig_val = getattr(self.ruleset.fusion_weights, w_name)
+            for multiplier in [0.8, 1.2]:
+                pert_val = orig_val * multiplier
+                new_fw = replace(self.ruleset.fusion_weights, **{w_name: pert_val})
+                new_ruleset = replace(self.ruleset, fusion_weights=new_fw)
+
+                # Re-run pipeline on the same bundle
+                pert_res = run_full_analytical_pipeline(
+                    raw_bundle=held_out_bundle,
+                    ruleset=new_ruleset,
+                    dataset_version_id=uuid4(),
+                )
+
+                ptp, pfp, ptn, pfn = _compute_confusion(held_out_scenarios, pert_res.findings)
+                p_prec, p_rec, p_f1, _ = _metrics_from_confusion(ptp, pfp, ptn, pfn)
+
+                weight_sens.append(WeightSensitivityPoint(
+                    weight_name=w_name,
+                    original_value=orig_val,
+                    perturbed_value=pert_val,
+                    precision=p_prec,
+                    recall=p_rec,
+                    f1=p_f1,
+                    delta_f1=p_f1 - base_f1,
+                ))
 
         result = RobustValidationResult(
             total_scenarios=len(tuning_cfgs) + len(held_out_cfgs),
