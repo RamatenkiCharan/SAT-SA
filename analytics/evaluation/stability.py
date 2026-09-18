@@ -31,6 +31,7 @@ class PerturbedConfiguration:
 @dataclass
 class RankStabilityMetrics:
     spearman_rho: float
+    spearman_defined: bool
     mean_displacement: float
     max_displacement: int
     inversions: int
@@ -90,6 +91,7 @@ class StabilityReport:
                     "score_max_delta": round(r.score_max_delta, 4),
                     "rank_metrics": {
                         "spearman_rho": round(r.rank_metrics.spearman_rho, 4),
+                        "spearman_defined": r.rank_metrics.spearman_defined,
                         "mean_displacement": round(r.rank_metrics.mean_displacement, 2),
                         "max_displacement": r.rank_metrics.max_displacement,
                         "inversions": r.rank_metrics.inversions,
@@ -128,6 +130,46 @@ def compute_spearman(rank_base: list[UUID], rank_pert: list[UUID]) -> float:
     d_sq_sum = sum((base_pos[uid] - pert_pos[uid]) ** 2 for uid in rank_base)
     rho = 1 - (6 * d_sq_sum) / (n * (n**2 - 1))
     return max(-1.0, min(1.0, rho))
+
+
+def compute_spearman_midrank(
+    base_scores: dict[UUID, float], perturbed_scores: dict[UUID, float]
+) -> tuple[float, bool]:
+    """Spearman correlation using average ranks for equal scores.
+
+    Returns ``(rho, defined)``.  When either score vector is constant, Spearman
+    is mathematically undefined; we return a stable neutral value of ``1.0``
+    with ``defined=False`` because no score ordering changed within that vector.
+    Consumers must inspect ``defined`` rather than interpret that value as a
+    statistical correlation.
+    """
+    ids = list(base_scores)
+    if len(ids) < 2 or set(ids) != set(perturbed_scores):
+        return 1.0, False
+
+    def midranks(scores: dict[UUID, float]) -> dict[UUID, float]:
+        ordered = sorted(scores.items(), key=lambda item: item[1], reverse=True)
+        ranks: dict[UUID, float] = {}
+        index = 0
+        while index < len(ordered):
+            end = index + 1
+            while end < len(ordered) and ordered[end][1] == ordered[index][1]:
+                end += 1
+            average_rank = ((index + 1) + end) / 2.0  # one-based inclusive ranks
+            for uid, _ in ordered[index:end]:
+                ranks[uid] = average_rank
+            index = end
+        return ranks
+
+    left, right = midranks(base_scores), midranks(perturbed_scores)
+    left_mean = sum(left.values()) / len(left)
+    right_mean = sum(right.values()) / len(right)
+    numerator = sum((left[i] - left_mean) * (right[i] - right_mean) for i in ids)
+    left_ss = sum((left[i] - left_mean) ** 2 for i in ids)
+    right_ss = sum((right[i] - right_mean) ** 2 for i in ids)
+    if left_ss == 0 or right_ss == 0:
+        return 1.0, False
+    return max(-1.0, min(1.0, numerator / math.sqrt(left_ss * right_ss))), True
 
 
 def generate_perturbations(
@@ -196,7 +238,8 @@ class StabilityAnalyzer:
         base_w = DEFAULT_AUTHORITATIVE_RULESET_V1.fusion_weights.to_dict()
         
         # 2. Sort baseline population accurately
-        # Tie-breaker: finding_id to guarantee deterministic stable sort
+        # UUID tie-break is only for deterministic display/selection. Spearman
+        # below uses score mid-ranks and never attributes an arbitrary UUID order.
         base_population = sorted(
             findings, 
             key=lambda f: (f.priority_score, str(f.finding_id)), 
@@ -271,7 +314,9 @@ class StabilityAnalyzer:
             pert_ranks = [f.finding_id for f in pert_population]
             
             # Rank Metrics
-            spearman = compute_spearman(base_ranks, pert_ranks)
+            base_scores = {f.finding_id: f.priority_score for f in base_population}
+            pert_scores = {f.finding_id: f.priority_score for f in pert_population}
+            spearman, spearman_defined = compute_spearman_midrank(base_scores, pert_scores)
             
             base_pos = {uid: i for i, uid in enumerate(base_ranks)}
             pert_pos = {uid: i for i, uid in enumerate(pert_ranks)}
@@ -291,6 +336,7 @@ class StabilityAnalyzer:
 
             rank_metrics = RankStabilityMetrics(
                 spearman_rho=spearman,
+                spearman_defined=spearman_defined,
                 mean_displacement=mean_disp,
                 max_displacement=max_disp,
                 inversions=inversions

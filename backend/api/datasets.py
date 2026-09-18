@@ -129,10 +129,10 @@ async def upload_dataset_file(
         )
     except IngestionValidationError as e:
         raise HTTPException(status_code=400, detail=f"Validation error: {str(e)}")
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=400, detail=f"Failed to process uploaded file: {str(e)}")
+    except Exception:
+        # Preserve implementation details in server logs only; upload errors are
+        # client-safe so filesystem paths and parser internals are not disclosed.
+        raise HTTPException(status_code=400, detail="Unable to process the uploaded file.")
 
     return ingest_res.to_dict()
 

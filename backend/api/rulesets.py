@@ -4,6 +4,7 @@ Allows supervisory inspection, auditing, registration, and activation of version
 """
 from __future__ import annotations
 
+import logging
 from typing import Any, Optional
 from uuid import UUID
 
@@ -16,6 +17,7 @@ from backend.security.auth import UserContext, require_analyst, require_supervis
 from backend.services.ruleset_service import RulesetService
 
 router = APIRouter(prefix="/api/rulesets", tags=["rulesets"])
+logger = logging.getLogger("satsa.api.rulesets")
 
 
 class RegisterRulesetRequest(BaseModel):
@@ -86,8 +88,11 @@ def register_ruleset(
             "message": f"Ruleset version '{registered.version}' registered successfully.",
             "ruleset": registered.to_dict(),
         }
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to register ruleset: {e}")
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Invalid ruleset configuration.")
+    except Exception as exc:
+        logger.exception("Ruleset registration failed.")
+        raise HTTPException(status_code=500, detail="Unable to register ruleset.") from exc
 
 
 @router.post("/{version}/activate")
@@ -106,5 +111,6 @@ def activate_ruleset(
         }
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to activate ruleset: {e}")
+    except Exception as exc:
+        logger.exception("Ruleset activation failed.")
+        raise HTTPException(status_code=500, detail="Unable to activate ruleset.") from exc

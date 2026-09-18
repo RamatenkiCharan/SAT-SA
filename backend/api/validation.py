@@ -1,18 +1,11 @@
-"""
-Validation & Supervisory Review Yield API Endpoints (SRS §19.4, §24).
-Computes empirical metrics against controlled synthetic ground-truth scenarios (tuning and held-out splits).
-Includes comprehensive Robust Validation Protocol (Confusion Matrix, FPR, Thresholds, Hard Negatives) & Review Efficiency Evaluation.
-"""
+"""Validation API endpoints for the current robust synthetic protocol."""
 from __future__ import annotations
 
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from analytics.evaluation.review_efficiency import (
-    ReviewEfficiencyEvaluator,
-    run_review_efficiency_benchmark,
-)
+from analytics.evaluation.review_efficiency import run_review_efficiency_benchmark
 from analytics.evaluation.robust_validation import RobustValidationEngine
 from analytics.evaluation.stability import StabilityAnalyzer
 from backend.models.ruleset import DEFAULT_AUTHORITATIVE_RULESET_V1
@@ -27,6 +20,73 @@ class StabilityRequest(BaseModel):
     magnitudes: list[float] = Field([0.05, 0.10, 0.15, 0.20], description="List of perturbation magnitudes to test.")
     budgets: list[int] = Field([1, 5, 10, 25], description="List of Review Budget sizes (K) to evaluate for overlap.")
     optimizer_seed: int = Field(42, description="Seed for deterministic control sampling in ReviewBudgetOptimizer.")
+
+
+class ValidationMetricsResponse(BaseModel):
+    tp: int
+    fp: int
+    tn: int
+    fn: int
+    precision: float
+    recall: float
+    f1_score: float
+    fpr: float
+    precision_ci: str | None = None
+    recall_ci: str | None = None
+
+
+class RankingMetricsResponse(BaseModel):
+    recall_at_1: float
+    recall_at_3: float
+    recall_at_5: float
+
+
+class ThresholdSensitivityResponse(BaseModel):
+    threshold: float
+    precision: float
+    recall: float
+    f1: float
+    fpr: float
+
+
+class WeightSensitivityResponse(BaseModel):
+    weight: str
+    original: float
+    perturbed: float
+    f1: float
+    delta_f1: float
+    recall_at_1: float
+    recall_at_3: float
+    recall_at_5: float
+    delta_recall_at_5: float
+
+
+class ValidationProtocolResponse(BaseModel):
+    protocol_version: str
+    limitation_notice: str
+    total_scenarios: int
+    tuning_scenarios: int
+    held_out_scenarios: int
+    held_out_ratio: float
+    hard_negative_count: int
+    hard_negative_fp_count: int
+    hard_negative_tn_count: int
+    tuning_metrics: ValidationMetricsResponse
+    held_out_metrics: ValidationMetricsResponse
+    tuning_ranking: RankingMetricsResponse
+    held_out_ranking: RankingMetricsResponse
+    threshold_sensitivity: list[ThresholdSensitivityResponse]
+    weight_sensitivity: list[WeightSensitivityResponse]
+
+
+def _run_current_validation_protocol() -> ValidationProtocolResponse:
+    """Run the single authoritative validation protocol used by the UI."""
+    result = RobustValidationEngine(
+        n_scenarios=240,
+        n_bootstrap=200,
+        ruleset=DEFAULT_AUTHORITATIVE_RULESET_V1,
+    ).run(seed=42)
+    return ValidationProtocolResponse.model_validate(result.to_dict())
 
 
 @router.post("/stability")
@@ -86,34 +146,18 @@ def run_stability_analysis(
     return report.to_dict()
 
 
-@router.get("")
+@router.get("", response_model=ValidationProtocolResponse)
 def get_validation_results(
     current_user: UserContext = Depends(require_supervisor),
-):
-    efficiency_report = run_review_efficiency_benchmark(ruleset=DEFAULT_AUTHORITATIVE_RULESET_V1)
-    
-    engine = RobustValidationEngine(n_scenarios=100, n_bootstrap=50, ruleset=DEFAULT_AUTHORITATIVE_RULESET_V1)
-    protocol_result = engine.run(seed=42)
-
-    return {
-        "status": "success",
-        "methodology": "Robust Validation Protocol (I-02/I-09)",
-        "disclosure": protocol_result.limitation_notice,
-        "review_efficiency": efficiency_report.to_dict(),
-        "final_protocol": protocol_result.to_dict(),
-    }
+) -> ValidationProtocolResponse:
+    return _run_current_validation_protocol()
 
 
-@router.get("/protocol")
-def get_final_protocol_results(
-    current_user: UserContext = Depends(require_supervisor),
-):
-    engine = RobustValidationEngine(n_scenarios=240, n_bootstrap=200, ruleset=DEFAULT_AUTHORITATIVE_RULESET_V1)
-    protocol_result = engine.run(seed=42)
-    return protocol_result.to_dict()
-
-
-@router.get("/review-efficiency")
+@router.get(
+    "/historical-review-efficiency",
+    deprecated=True,
+    summary="Historical synthetic review-efficiency diagnostic",
+)
 def get_review_efficiency_results(
     current_user: UserContext = Depends(require_supervisor),
 ):

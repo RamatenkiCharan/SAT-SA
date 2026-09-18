@@ -2,6 +2,11 @@
 **Problem Statement ID: 26157**  
 **Stakeholder: National Critical Information Infrastructure Protection Centre (NCIIPC)**
 
+> This guide demonstrates SAT-SA using controlled synthetic evidence. No
+> authorized NCIIPC production dataset was available for validation. Current
+> detector metrics are synthetic-only; independent supervisory-review utility
+> and real-world ranking superiority remain unvalidated.
+
 ---
 
 ## 1. The Core Pitch Story (The "Goodhart's Law" Insight)
@@ -27,11 +32,11 @@ When a SOC is audited using conventional KPI dashboards (e.g. *98.4% SLA Complia
 
 | Time | Screen / View | Action on Screen | What to Say to the Judges |
 |---|---|---|---|
-| **0:00 - 0:45** | **Overview Tab** | Point to the **National Power Dispatch Center (NPDC)** card. | *"Judges, looking at conventional dashboards, NPDC reports a 99.2% SLA compliance (Green). But SAT-SA ingests raw operational evidence (alerts, cases, investigations, closures). In seconds, SAT-SA detects that NPDC is suffering from severe Goodhart's Law execution gaps."* |
-| **0:45 - 1:30** | **Findings Triage & Evidence Drill-Down** | Click into the **FR-030 Fast Closure finding on NPDC**. Open the Evidence Timeline. | *"Notice our 5-component priority score (93/100). When we drill into the evidence lifecycle graph, we see a Critical SCADA alert acknowledged at 02:00 and closed at 02:04 with 0 forensic artifacts. Compared to the Energy Sector Peer Median of 48 minutes, this 4-minute closure is an extreme statistical anomaly."* |
-| **1:30 - 2:00** | **Negative Space Tab** | Open the **Negative Space Matrix**. Point out the Critical SCADA Controller. | *"Here is our negative-space engine. Notice this critical asset produced zero telemetry. But instead of blindly blaming the SOC, SAT-SA first verifies our Data Quality Trust Score (0.92). Because the data pipeline is healthy, we prove this is a genuine monitoring blind spot, not an ingestion outage."* |
-| **2:00 - 2:30** | **Human-in-the-Loop & Auditability** | Click **Review Action**, select **Confirmed Operational Gap**, add notes, then switch to **Audit Trail**. | *"The human supervisor remains the final authority. I confirm this finding. SAT-SA immediately writes a cryptographic, immutable audit log entry. The system is 100% offline, air-gapped, and uses deterministic templates—meaning zero LLM hallucinations."* |
-| **2:30 - 3:00** | **Validation Suite Tab** | Open the **Review Yield Suite & Empirical Scorecard**. | *"Under our Generator/Detector Independence Protocol (§19.4), we tested on held-out scenarios. SAT-SA achieves 100% recall on true operational weaknesses, and our Supervisory Review Yield curve proves examiners uncover all critical gaps in their first 6 case reviews instead of inspecting thousands of alerts."* |
+| **0:00 - 0:45** | **Overview Tab** | Point to the **National Power Dispatch Center (NPDC)** card. | *"In this controlled synthetic scenario, NPDC reports a 99.2% SLA compliance. SAT-SA then reconstructs the supplied operational evidence to surface potential execution-gap signals for human review."* |
+| **0:45 - 1:30** | **Findings Triage & Evidence Drill-Down** | Click into the **FR-030 Fast Closure finding on NPDC**. Open the Evidence Timeline. | *"This synthetic evidence lifecycle shows a critical SCADA alert acknowledged at 02:00 and closed at 02:04 with no forensic artifacts. Compared with the scenario's peer baseline, the pattern is an evidence-backed review signal, not a conclusion about a real SOC."* |
+| **1:30 - 2:00** | **Negative Space Tab** | Open the **Negative Space Matrix**. Point out the Critical SCADA Controller. | *"This scenario contains no telemetry for a critical asset. SAT-SA checks Data Trust first; when the tested data is sufficiently trustworthy, it surfaces a potential monitoring blind spot for review rather than treating missing evidence as proof of failure."* |
+| **2:00 - 2:30** | **Human-in-the-Loop & Auditability** | Click **Review Action**, select **Confirmed Operational Gap**, add notes, then switch to **Audit Trail**. | *"The human supervisor remains the final authority. SAT-SA records the review decision in its audit trail. The core analytics were verified under the tested offline configuration without external LLM/cloud inference, and explanations are deterministic templates over evidence."* |
+| **2:30 - 3:00** | **Validation Tab** | Open the **Current Held-Out Synthetic Detector Validation** view. | *"Under the Generator/Detector Independence Protocol, the current controlled synthetic benchmark has 240 scenarios: 168 tuning, 72 held-out, and 36 hard negatives. Held-out detector results are 97.30% precision, 92.31% recall, 94.74% F1, and 0.40% FPR. This is synthetic detector validation, not real-world SOC or review-utility validation."* |
 
 ---
 
@@ -41,7 +46,7 @@ When a SOC is audited using conventional KPI dashboards (e.g. *98.4% SLA Complia
 > **Defense:** *"No. A SIEM/SOAR asks: 'Is something malicious happening on the network right now?' SAT-SA is a supervisory analytics layer that asks: 'Is the SOC's detection, investigation, and escalation process itself functioning effectively?' We consume telemetry-about-the-process, not raw packet captures."*
 
 ### Q2: "Why didn't you use an LLM (like GPT-4 or Claude) to generate the findings?"
-> **Defense:** *"For NCIIPC critical infrastructure, two constraints are non-negotiable: (1) **100% Air-Gapped / Offline Operation** (no cloud API dependencies), and (2) **Zero Hallucination & Provable Auditability**. Generative AI can invent facts and change conclusions between runs. SAT-SA uses robust statistics (Median/MAD) and deterministic template substitution over computed numbers."*
+> **Defense:** *"SAT-SA is designed for offline/air-gapped deployment. Its core analytics were verified under the tested offline configuration without external LLM/cloud inference. Generative AI can invent facts and change conclusions between runs, so SAT-SA uses robust statistics (Median/MAD) and deterministic template substitution over computed numbers."*
 
 ### Q3: "How do you distinguish a true blind spot from a broken log shipper?"
 > **Defense:** *"Through our Data Trust & Quality Engine (§7.2.1). Before raising a negative-space coverage gap, we calculate a 4-part Data Quality score (Completeness, Consistency, Coverage, Sample Sufficiency). If Data Quality is $\le 0.70$, we flag a data pipeline outage (FR-015). We ONLY flag an operational blind spot when Data Quality is $> 0.70$."*
@@ -64,10 +69,10 @@ When a SOC is audited using conventional KPI dashboards (e.g. *98.4% SLA Complia
 > **Defense:** *"Our Sample Sufficiency ratio drops if the record count is below 30. This increases Data Uncertainty ($U_{\text{data}}$), which penalizes the Priority Score and adds a prominent 'Low Confidence / Small Sample' warning in the finding explanation."*
 
 ### Q9: "How does SAT-SA save time for NCIIPC examiners?"
-> **Defense:** *"Our Supervisory Review Yield curve proves that instead of manually inspecting 10,000 alerts, an examiner reviewing just the top 6 prioritized cases captures 100% of all true systemic operational weaknesses."*
+> **Defense:** *"SAT-SA implements deterministic budget-constrained review selection to help supervisors inspect a limited queue. Independent supervisory-utility ground truth is not yet available, so we do not claim proven real-world review-yield or ranking superiority."*
 
 ### Q10: "Can this deploy in a real air-gapped NCIIPC bunker tomorrow?"
-> **Defense:** *"Yes. It is fully containerized (Docker & Docker Compose), runs on Python FastAPI and React with zero external CDN or internet dependencies, uses local PostgreSQL/SQLite storage, and requires no GPU or external SaaS licensing."*
+> **Defense:** *"SAT-SA is designed for local/offline deployment and is containerized with Docker Compose. Its tested core analytics use local PostgreSQL/SQLite options and no external LLM/cloud inference. Target-environment deployment and network policy still require operational verification."*
 
 ---
 
@@ -88,16 +93,16 @@ When a SOC is audited using conventional KPI dashboards (e.g. *98.4% SLA Complia
 4. **Slide 4: Core Innovations**
    - 4-Part Data Quality Gating (§7.2.1).
    - Robust Peer Benchmarking (Median / MAD / Robust Z).
-   - 100% Deterministic Explainability (Zero Hallucination, Air-gapped).
+   - Deterministic template explainability over evidence, without external LLM/cloud inference in the tested configuration.
 
 5. **Slide 5: Live Demonstration ("The NPDC Reality Check")**
    - Side-by-side contrast of 99.2% SLA vs 4-min closure on SCADA alert.
    - Evidence drill-down timeline & Negative Space Matrix.
 
-6. **Slide 6: Empirical Validation & Independence Protocol**
-   - Scorecard: 100% Recall, Top-K = 1.0 on Held-Out Benchmark.
-   - Review Yield Curve showing 90%+ effort reduction for examiners.
+6. **Slide 6: Controlled Synthetic Validation & Limitations**
+   - Current held-out synthetic detector scorecard: 97.30% precision, 92.31% recall, 94.74% F1, 0.40% FPR (72 held-out of 240 scenarios; 36 hard negatives).
+   - State clearly: no authorized NCIIPC production dataset and no independently authored supervisory-utility ground truth.
 
 7. **Slide 7: Deployment & Impact**
-   - 100% Offline, Air-gapped, Zero Outbound Traffic, PostgreSQL & Docker ready.
-   - Scalable to all Critical Sector Entities (Power, Banking, Rail, Telecom, Defense).
+   - Designed for offline/air-gapped deployment; core analytics verified in the tested offline configuration without external LLM/cloud inference.
+   - Demonstrated on controlled synthetic evidence; target-environment deployment and real-world effectiveness remain future validation work.

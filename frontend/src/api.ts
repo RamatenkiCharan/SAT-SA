@@ -6,7 +6,7 @@ import type {
   PeerCohort,
   CSEBenchmarkMetric,
   ReviewDecisionState,
-  ValidationResponse,
+  ValidationProtocolResponse,
 } from "./types";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
@@ -56,6 +56,72 @@ async function authFetch(url: string, options: RequestInit = {}): Promise<any> {
     throw new Error(err.detail || `Request failed with status ${res.status}`);
   }
   return res.json();
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function isValidationMetricsResponse(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+  return ["tp", "fp", "tn", "fn", "precision", "recall", "f1_score", "fpr"].every(
+    (field) => isNumber(value[field]),
+  ) && (value.precision_ci === null || typeof value.precision_ci === "string")
+    && (value.recall_ci === null || typeof value.recall_ci === "string");
+}
+
+function isRankingMetricsResponse(value: unknown): boolean {
+  return isRecord(value)
+    && isNumber(value.recall_at_1)
+    && isNumber(value.recall_at_3)
+    && isNumber(value.recall_at_5);
+}
+
+function isThresholdSensitivityResponse(value: unknown): boolean {
+  return isRecord(value)
+    && ["threshold", "precision", "recall", "f1", "fpr"].every((field) => isNumber(value[field]));
+}
+
+function isWeightSensitivityResponse(value: unknown): boolean {
+  return isRecord(value)
+    && typeof value.weight === "string"
+    && [
+      "original",
+      "perturbed",
+      "f1",
+      "delta_f1",
+      "recall_at_1",
+      "recall_at_3",
+      "recall_at_5",
+      "delta_recall_at_5",
+    ].every((field) => isNumber(value[field]));
+}
+
+function isValidationProtocolResponse(value: unknown): value is ValidationProtocolResponse {
+  if (!isRecord(value)) return false;
+  return typeof value.protocol_version === "string"
+    && typeof value.limitation_notice === "string"
+    && [
+      "total_scenarios",
+      "tuning_scenarios",
+      "held_out_scenarios",
+      "held_out_ratio",
+      "hard_negative_count",
+      "hard_negative_fp_count",
+      "hard_negative_tn_count",
+    ].every((field) => isNumber(value[field]))
+    && isValidationMetricsResponse(value.tuning_metrics)
+    && isValidationMetricsResponse(value.held_out_metrics)
+    && isRankingMetricsResponse(value.tuning_ranking)
+    && isRankingMetricsResponse(value.held_out_ranking)
+    && Array.isArray(value.threshold_sensitivity)
+    && value.threshold_sensitivity.every(isThresholdSensitivityResponse)
+    && Array.isArray(value.weight_sensitivity)
+    && value.weight_sensitivity.every(isWeightSensitivityResponse);
 }
 
 
@@ -170,8 +236,12 @@ export async function fetchBenchmarks(versionId?: string): Promise<{
   return authFetch(`${API_BASE}/benchmarks${query}`);
 }
 
-export async function fetchValidationResults(): Promise<ValidationResponse> {
-  return authFetch(`${API_BASE}/validation`);
+export async function fetchValidationResults(): Promise<ValidationProtocolResponse> {
+  const response: unknown = await authFetch(`${API_BASE}/validation`);
+  if (!isValidationProtocolResponse(response)) {
+    throw new Error("Validation API returned an invalid protocol response.");
+  }
+  return response;
 }
 
 export async function fetchAuditLogs(): Promise<AuditEventItem[]> {
@@ -211,4 +281,3 @@ export async function fetchStabilityAnalysis(
     }),
   });
 }
-

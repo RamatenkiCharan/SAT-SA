@@ -115,6 +115,10 @@ class WeightSensitivityPoint:
     recall: float
     f1: float
     delta_f1: float
+    recall_at_1: float
+    recall_at_3: float
+    recall_at_5: float
+    delta_recall_at_5: float
 
 
 @dataclass
@@ -200,7 +204,11 @@ class RobustValidationResult:
             d["weight_sensitivity"] = [
                 {"weight": p.weight_name, "original": round(p.original_value, 4),
                  "perturbed": round(p.perturbed_value, 4), "f1": round(p.f1, 4),
-                 "delta_f1": round(p.delta_f1, 4)}
+                 "delta_f1": round(p.delta_f1, 4),
+                 "recall_at_1": round(p.recall_at_1, 4),
+                 "recall_at_3": round(p.recall_at_3, 4),
+                 "recall_at_5": round(p.recall_at_5, 4),
+                 "delta_recall_at_5": round(p.delta_recall_at_5, 4)}
                 for p in self.weight_sensitivity
             ]
         return d
@@ -728,6 +736,7 @@ class RobustValidationEngine:
             held_out_scenarios, held_out_findings,
         )
         _, _, base_f1, _ = _metrics_from_confusion(base_tp, base_fp, base_tn, base_fn)
+        base_ranking = _compute_ranking_metrics(held_out_scenarios, held_out_findings)
 
         from dataclasses import replace
 
@@ -755,6 +764,7 @@ class RobustValidationEngine:
 
                 ptp, pfp, ptn, pfn = _compute_confusion(held_out_scenarios, pert_res.findings)
                 p_prec, p_rec, p_f1, _ = _metrics_from_confusion(ptp, pfp, ptn, pfn)
+                ranking = _compute_ranking_metrics(held_out_scenarios, pert_res.findings)
 
                 weight_sens.append(WeightSensitivityPoint(
                     weight_name=w_name,
@@ -764,6 +774,10 @@ class RobustValidationEngine:
                     recall=p_rec,
                     f1=p_f1,
                     delta_f1=p_f1 - base_f1,
+                    recall_at_1=ranking.recall_at_1,
+                    recall_at_3=ranking.recall_at_3,
+                    recall_at_5=ranking.recall_at_5,
+                    delta_recall_at_5=ranking.recall_at_5 - base_ranking.recall_at_5,
                 ))
 
         result = RobustValidationResult(

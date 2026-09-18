@@ -15,7 +15,7 @@ SAT-SA     = Examiner assessing the hospital     -> Evaluates whether the defens
              treatment system                      is actually effective
 ```
 
-SAT-SA is **not** a SIEM, SOAR, EDR/XDR, or real-time monitoring platform. It is an **air-gapped supervisory intelligence engine** that analyzes the operational evidence a Security Operations Center (SOC) produces (alerts, investigations, cases, escalations, remediation actions, closures) to identify:
+SAT-SA is **not** a SIEM, SOAR, EDR/XDR, or real-time monitoring platform. It is a supervisory analytics prototype whose core analytics can run locally without external LLM or cloud-inference dependencies. It analyzes SOC operational evidence (alerts, investigations, cases, escalations, remediation actions, closures) to identify:
 
 1. **Execution Gaps (Goodhart's Law Metric Gaming)**: When a documented process exists and KPI metrics look healthy (e.g. 99% SLA compliance), but underlying evidence shows rapid superficial closures (e.g., median 3-4 minutes on critical alerts), missing escalation records, and recurring unresolved alerts on critical infrastructure.
 2. **Negative Space (Monitoring Blind Spots)**: Evidence that *should* exist under expected operating conditions but doesn't (e.g., zero telemetry from a critical SCADA controller), safely gated by Data Trust scores to distinguish true blind spots from data ingestion outages.
@@ -66,8 +66,12 @@ python run_app.py
 *(On Windows, you can also double-click `start.bat` or run `.\start.ps1`)*
 
 The local runner uses durable SQLite by default. Set `SAT_PERSISTENCE_MODE=postgres`
-only when `DATABASE_URL` is configured; set it to `memory` only for disposable tests.
-For Docker, copy `.env.example` to `.env` and replace both placeholders before starting.
+only when `DATABASE_URL` or `POSTGRES_PASSWORD` is configured; set it to `memory`
+only for disposable tests. No login account or synthetic dataset is created implicitly.
+For an explicitly configured local demo, set `SAT_SEED_DEMO_USERS=true`, all three
+`SAT_BOOTSTRAP_*_PASSWORD` variables, and optionally `SAT_SEED_DEMO_DATA=true`.
+For Docker, copy `.env.example` to `.env`, replace required placeholders, and opt
+in to demo seeding only when appropriate.
 
 ### Option 2: Full Development Mode (Hot Reload)
 
@@ -96,14 +100,16 @@ python -m pytest tests/ -v
 ### Validation limitations
 
 The bundled validation data is synthetic and must not be presented as production
-performance. Its current scenario distributions are intentionally controlled and
-too separable to make the headline precision/recall figures meaningful. Use the
-review-yield and Top-K measures as diagnostic outputs, not claims of field accuracy,
-until an overlapping held-out benchmark has been completed.
+performance. The current robust protocol uses 240 synthetic scenarios (168 tuning,
+72 held-out, 36 hard negatives). Its latest held-out detector result is precision
+97.30%, recall 92.31%, F1 94.74%, and FPR 0.40%, with bootstrap confidence intervals
+recorded by the protocol. These measure planted synthetic patterns only. Raw Top-K
+finding recall is a detector diagnostic, not a validation of review-budget utility;
+independently authored supervisory-utility labels are still required.
 
 ---
 
 ## 🛡️ Hackathon Security Baseline (SRS §15.1)
-- **100% Offline & Air-Gapped**: Zero outbound network requests.
+- **Tested local/offline core**: Core analytics have no external LLM or cloud-inference dependency in the tested configuration; deployment/network policy must still be verified for a target environment.
 - **Deterministic Explainability**: Rationale rendered strictly via template substitution over empirical values—no generative text hallucinations.
 - **Provenance & Auditability**: Every dataset import and human examiner disposition is recorded in an immutable audit log.

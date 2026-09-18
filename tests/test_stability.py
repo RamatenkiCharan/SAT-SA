@@ -9,6 +9,7 @@ from uuid import uuid4
 
 from analytics.evaluation.stability import (
     compute_spearman,
+    compute_spearman_midrank,
     generate_perturbations,
     StabilityAnalyzer,
 )
@@ -68,6 +69,19 @@ def test_spearman_calculation():
     assert compute_spearman([1], [1]) == 1.0
     # Empty
     assert compute_spearman([], []) == 1.0
+
+
+def test_spearman_midrank_tie_handling():
+    ids = [uuid4() for _ in range(4)]
+    # no ties, identical and reversed
+    assert compute_spearman_midrank(dict(zip(ids, [4, 3, 2, 1])), dict(zip(ids, [4, 3, 2, 1]))) == (1.0, True)
+    assert compute_spearman_midrank(dict(zip(ids, [4, 3, 2, 1])), dict(zip(ids, [1, 2, 3, 4]))) == (-1.0, True)
+    # partial/multiple ties receive average ranks, independent of UUID order
+    rho, defined = compute_spearman_midrank(dict(zip(ids, [4, 4, 2, 2])), dict(zip(ids, [3, 3, 1, 1])))
+    assert rho == 1.0 and defined
+    # all-equal ranks have no variance: explicitly undefined, never UUID-ranked
+    rho, defined = compute_spearman_midrank(dict(zip(ids, [1, 1, 1, 1])), dict(zip(ids, [1, 1, 1, 1])))
+    assert rho == 1.0 and not defined
 
 
 def test_perturbation_validity():

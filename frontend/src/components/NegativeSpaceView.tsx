@@ -30,7 +30,7 @@ export const NegativeSpaceView: React.FC<NegativeSpaceViewProps> = ({
       expected: 45,
       observed: 0,
       status: "BLIND_SPOT_GAP",
-      desc: "ZERO security events observed despite active production load (Data Trust: 92%). Gated confirmation of genuine supervisory blind spot.",
+      desc: "No security events observed in the active simulated load (Data Trust: 92%). Data-trust-gated signal for supervisory review.",
     },
     {
       name: "Core Banking Transaction DB Cluster",

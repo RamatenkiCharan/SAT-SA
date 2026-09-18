@@ -204,7 +204,7 @@ export const LandingHeroView: React.FC<LandingHeroViewProps> = ({
               <h3 style={{ fontSize: "1rem", color: "#fff" }}>Air-Gapped & Deterministic</h3>
             </div>
             <p style={{ fontSize: "0.84rem", color: "#94a3b8", lineHeight: 1.5 }}>
-              Zero network egress, 100% offline verification, non-generative explainability, and immutable audit logs.
+              Offline-capable core analytics, verified without external LLM/cloud inference, non-generative explainability, and audit logs.
             </p>
           </div>
         </div>

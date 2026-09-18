@@ -38,7 +38,8 @@ class RulesetService:
                 if active is not None:
                     return active
             except Exception as e:
-                logger.warning(f"Failed to fetch active ruleset from repository: {e}. Falling back to default V1.")
+                logger.exception("Failed to fetch active ruleset from repository.")
+                raise RuntimeError("Configured ruleset store is unavailable or invalid.") from e
 
         return cls.get_fallback_ruleset()
 
@@ -58,8 +59,9 @@ class RulesetService:
                     stored = repo.get_ruleset_by_version(version)
                     if stored is not None:
                         return stored
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.exception("Failed to fetch ruleset version %s from repository.", version)
+                    raise RuntimeError("Configured ruleset store is unavailable or invalid.") from e
             return cls.get_fallback_ruleset()
 
         if repo is not None:
@@ -78,7 +80,8 @@ class RulesetService:
                 if stored_list:
                     return stored_list
             except Exception as e:
-                logger.warning(f"Failed to list rulesets from repository: {e}.")
+                logger.exception("Failed to list rulesets from repository.")
+                raise RuntimeError("Configured ruleset store is unavailable or invalid.") from e
 
         return [cls.get_fallback_ruleset()]
 

@@ -154,7 +154,7 @@ export const AuditView: React.FC = () => {
           <div style={{ background: "rgba(5, 8, 17, 0.7)", padding: "0.85rem 1rem", borderRadius: "var(--radius-md)", border: "1px solid var(--border-subtle)" }}>
             <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", fontWeight: 600 }}>TAMPER INTEGRITY</div>
             <div style={{ fontSize: "1.4rem", fontWeight: 800, color: "var(--accent-matrix)", display: "flex", alignItems: "center", gap: "0.35rem" }}>
-              <span className="pulse-live" /> 100% SECURE
+              <span className="pulse-live" /> SECURITY CONTROLS ACTIVE
             </div>
           </div>
           <div style={{ background: "rgba(5, 8, 17, 0.7)", padding: "0.85rem 1rem", borderRadius: "var(--radius-md)", border: "1px solid var(--border-subtle)" }}>

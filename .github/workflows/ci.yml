@@ -47,6 +47,10 @@ jobs:
       working-directory: ./frontend
       run: npm run lint
 
+    - name: Build Frontend (TypeScript type check + production bundle)
+      working-directory: ./frontend
+      run: npm run build
+
   security:
     runs-on: ubuntu-latest
     

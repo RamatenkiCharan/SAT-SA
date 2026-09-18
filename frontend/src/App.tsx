@@ -23,7 +23,7 @@ const TAB_TITLES: Record<TabId, string> = {
   reviewsample: "Review-Budget Optimizer",
   benchmarks: "Peer Cohort Benchmarking",
   negativespace: "Negative Space Monitoring Map",
-  validation: "Supervisory Review Yield & Validation",
+  validation: "Synthetic Validation & Review Selection",
   datasets: "Operational Telemetry Datasets",
   audit: "Immutable Supervisory Audit Ledger",
   help: "Architecture & Operational Guidance",

@@ -76,7 +76,11 @@ def _get_database_url() -> str:
         return db_url
 
     user = os.environ.get("POSTGRES_USER", "satsa")
-    password = os.environ.get("POSTGRES_PASSWORD", "satsa_dev_only_change_me")
+    password = os.environ.get("POSTGRES_PASSWORD")
+    if not password:
+        raise RuntimeError(
+            "DATABASE_URL or POSTGRES_PASSWORD must be configured for PostgreSQL persistence."
+        )
     host = os.environ.get("POSTGRES_HOST", "localhost")
     port = os.environ.get("POSTGRES_PORT", "5432")
     db = os.environ.get("POSTGRES_DB", "satsa")
@@ -144,7 +148,13 @@ class PostgresRepository(BaseSATRepository):
         self._seed_reference_data()
 
     def _seed_reference_data(self):
-        """Seeds roles, default ruleset, and demo users when the database is empty."""
+        """Seeds required reference data and explicitly configured demo users.
+
+        Roles and the authoritative baseline ruleset are application reference
+        data.  Login accounts are different: they are only inserted when the
+        operator has opted in with ``SAT_SEED_DEMO_USERS`` and supplied every
+        bootstrap password.
+        """
         with self.engine.begin() as conn:
             # Seed default roles if not present
             role_rows = conn.execute(text("SELECT COUNT(*) FROM roles")).scalar()
@@ -175,17 +185,12 @@ class PostgresRepository(BaseSATRepository):
                     },
                 )
 
-            # Seed default users if not present
+            # Seed demo/test users only with explicit operator configuration.
             user_rows = conn.execute(text("SELECT COUNT(*) FROM users")).scalar()
             if not user_rows:
                 now_str = datetime.now(timezone.utc).isoformat()
-                from backend.security.auth import hash_password
-                seeds = [
-                    ("usr_admin_01", "admin", "Admin@SAT2026!", "role_admin", "NCIIPC Lead Administrator"),
-                    ("usr_sup_01", "supervisor", "Supervisor@SAT2026!", "role_supervisor", "Senior NCIIPC Examiner"),
-                    ("usr_analyst_01", "analyst", "Analyst@SAT2026!", "role_analyst", "SOC Evidence Analyst"),
-                ]
-                for uid, uname, raw_pwd, rid, fname in seeds:
+                from backend.security.auth import configured_bootstrap_users, hash_password
+                for uid, uname, raw_pwd, role, fname in configured_bootstrap_users():
                     conn.execute(
                         text("""
                         INSERT INTO users (user_id, username, password_hash, role_id, full_name, created_at, is_active)
@@ -195,7 +200,7 @@ class PostgresRepository(BaseSATRepository):
                             "uid": uid,
                             "uname": uname,
                             "phash": hash_password(raw_pwd),
-                            "rid": rid,
+                            "rid": f"role_{role}",
                             "fname": fname,
                             "cat": now_str,
                         },
@@ -1890,7 +1895,8 @@ class PostgresRepository(BaseSATRepository):
                     data = json.loads(row["weights_json"])
                     return AnalyticalRuleset.from_dict(data)
                 except Exception as e:
-                    logger.warning("Could not parse active ruleset JSON (%s); returning fallback V1.", e)
+                    logger.exception("Could not parse active ruleset JSON.")
+                    raise ValueError("Stored active ruleset is invalid.") from e
 
         return DEFAULT_AUTHORITATIVE_RULESET_V1
 
@@ -1906,7 +1912,8 @@ class PostgresRepository(BaseSATRepository):
                     data = json.loads(row["weights_json"])
                     return AnalyticalRuleset.from_dict(data)
                 except Exception as e:
-                    logger.warning("Could not parse ruleset JSON for version %s (%s).", version, e)
+                    logger.exception("Could not parse ruleset JSON for version %s.", version)
+                    raise ValueError(f"Stored ruleset version '{version}' is invalid.") from e
         return None
 
     def list_rulesets(self) -> list[AnalyticalRuleset]:
@@ -1921,8 +1928,9 @@ class PostgresRepository(BaseSATRepository):
                     try:
                         data = json.loads(r["weights_json"])
                         rulesets.append(AnalyticalRuleset.from_dict(data))
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.exception("Could not parse a stored ruleset JSON row.")
+                        raise ValueError("A stored ruleset is invalid.") from e
         return rulesets or [DEFAULT_AUTHORITATIVE_RULESET_V1]
 
     def register_ruleset(

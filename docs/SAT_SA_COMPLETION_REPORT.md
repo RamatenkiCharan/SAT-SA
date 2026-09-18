@@ -1,3 +1,11 @@
+# Historical SAT-SA Completion Report — Superseded
+
+> This September 2026 snapshot contains obsolete test counts and unsupported
+> review-efficiency/validation claims. It is retained as project history only.
+> Do not use it for demonstration, validation, or release claims. Refer to
+> `../SAT_SA_POST_DIAGNOSTIC_VERIFICATION_REPORT.md` and
+> `../SAT_SA_FINAL_CLAUDE_AUDIT_REMEDIATION_REPORT.md` for the current evidence.
+
 # SAT-SA — Complete Project Completion & System Architecture Report
 
 **Supervisory Analytics Tool for SOC Assessment**  

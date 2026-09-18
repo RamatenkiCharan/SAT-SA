@@ -28,12 +28,21 @@ from backend.api.validation import router as validation_router
 from backend.repositories.in_memory_repo import InMemoryRepository, get_repository
 
 
+def demo_dataset_seeding_enabled() -> bool:
+    """Return whether an operator explicitly requested the demo dataset.
+
+    Loading a synthetic evidence pack changes the active dataset and must never
+    happen merely because a durable production database is empty.
+    """
+    return os.environ.get("SAT_SEED_DEMO_DATA", "").lower() in {"1", "true", "yes"}
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Pre-seed baseline multi-sector critical infrastructure demo pack
+    # Startup has no analytics/network work unless a local operator explicitly
+    # requests the synthetic demo pack.
     repo = get_repository()
-    if not repo.datasets:
+    if demo_dataset_seeding_enabled() and not repo.datasets:
         import hashlib
         from backend.services.ingestion import FileFormat, parse_raw_payload
 

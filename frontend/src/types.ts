@@ -536,6 +536,64 @@ export interface ValidationResponse {
   final_protocol?: FinalProtocolReport;
 }
 
+export interface ValidationMetricsResponse {
+  tp: number;
+  fp: number;
+  tn: number;
+  fn: number;
+  precision: number;
+  recall: number;
+  f1_score: number;
+  fpr: number;
+  precision_ci: string | null;
+  recall_ci: string | null;
+}
+
+export interface RankingMetricsResponse {
+  recall_at_1: number;
+  recall_at_3: number;
+  recall_at_5: number;
+}
+
+export interface ThresholdSensitivityResponse {
+  threshold: number;
+  precision: number;
+  recall: number;
+  f1: number;
+  fpr: number;
+}
+
+export interface WeightSensitivityResponse {
+  weight: string;
+  original: number;
+  perturbed: number;
+  f1: number;
+  delta_f1: number;
+  recall_at_1: number;
+  recall_at_3: number;
+  recall_at_5: number;
+  delta_recall_at_5: number;
+}
+
+/** Current authoritative robust synthetic-validation API response. */
+export interface ValidationProtocolResponse {
+  protocol_version: string;
+  limitation_notice: string;
+  total_scenarios: number;
+  tuning_scenarios: number;
+  held_out_scenarios: number;
+  held_out_ratio: number;
+  hard_negative_count: number;
+  hard_negative_fp_count: number;
+  hard_negative_tn_count: number;
+  tuning_metrics: ValidationMetricsResponse;
+  held_out_metrics: ValidationMetricsResponse;
+  tuning_ranking: RankingMetricsResponse;
+  held_out_ranking: RankingMetricsResponse;
+  threshold_sensitivity: ThresholdSensitivityResponse[];
+  weight_sensitivity: WeightSensitivityResponse[];
+}
+
 export interface AuditEventItem {
   audit_event_id: string;
   user_id: string;

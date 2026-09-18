@@ -1,3 +1,12 @@
+# Historical Synthetic Circularity Audit — Superseded Scope
+
+> This report predates the robust 240-scenario protocol and retains obsolete
+> 15-scenario metrics and overly strong certification language. It documents a
+> historical source-review exercise only. Current synthetic validation evidence
+> and limitations are recorded in `../SAT_SA_POST_DIAGNOSTIC_VERIFICATION_REPORT.md`.
+> It does not establish production validation or independent supervisory-review
+> utility.
+
 # SAT-SA Synthetic Validation Circularity & Independence Audit Report
 
 **Document ID**: SAT-SA-AUDIT-CIRCULARITY-001  

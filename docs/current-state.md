@@ -1,41 +1,57 @@
-# SAT-SA — Current State
+# SAT-SA — Current Engineering State
 
-## Current Phase
-Full-Stack MVP Complete — All P0, P1, and Validation Milestones Operational.
+## Scope
 
-## Core Capabilities Delivered
-- **Canonical Model & Ingestion**:
-  - Typed Pydantic models for CSE, Asset, Alert, Investigation, Case, Escalation, Action, Closure, CoverageObservation, PeerGroup, Finding.
-  - Ingestion and canonicalization for CSV and JSON bundles with provenance tracking.
-- **Data Trust & Quality Engine (§7.2.1)**:
-  - Decomposed 4-ratio formula (Completeness 35%, Consistency 25%, Coverage 25%, Sample Sufficiency 15%).
-  - Gated evaluation preventing false security findings during data outages.
-- **Workflow Reconstruction**:
-  - Reconstructs full alert-to-closure lifecycle graphs and computes case durations, investigation depths, and recurrence patterns.
-- **Peer Benchmarking Engine**:
-  - Robust peer-relative statistics (`peer_median`, `peer_MAD`, robust z-scores) with minimum cohort size thresholding (5) and global fallback.
-- **Deterministic Execution-Gap & Negative-Space Detectors**:
-  - **FR-030 Fast Closure Detector**: Identifies critical alerts closed below `peer_median - 2.5 * peer_MAD` with substandard evidence count.
-  - **FR-032 Escalation Gap Detector**: Identifies critical alerts on critical assets lacking formal escalation records.
-  - **FR-033 Repeated Unresolved Detector**: Detects &ge;3 repeated alerts on the same asset across sliding 30-day windows lacking remediation actions.
-  - **FR-041 Coverage Gap Negative-Space Detector**: Identifies monitoring silence on critical assets gated by healthy Data Quality score (&ge; 0.7).
-- **Evidence Fusion & Priority Scoring (§10.5)**:
-  - Versioned 5-component formula (`SignalStrength` 30%, `PeerDeviation` 25%, `Persistence` 20%, `AssetCriticality` 15%, `DataUncertainty` -10%).
-  - Validated finding generation contract (all high-priority findings have &ge;2 independent signals and linked evidence).
-- **Deterministic Explainability Engine**:
-  - 100% non-generative, template-based explanation generator producing clear rationale, decomposed quality metrics, supporting/contradicting signals, and recommended supervisory actions without LLM hallucination.
-- **Synthetic Ground-Truth Validation & Review Yield Suite**:
-  - Implements the Generator/Detector Independence Protocol (§19.4) with separate tuning (10 scenarios) and held-out (5 scenarios, 33.3% ratio) test splits across 6 parameter dimensions.
-  - Formally audited and certified for non-circularity (`docs/circularity_audit_report.md`).
-  - Calculates Precision, Recall (100%), F1, Top-K recall, and Supervisory Review Yield curve.
-- **FastAPI REST Backend**:
-  - Endpoints for datasets, findings, evidence drill-down, review decisions, peer benchmarks, validation, audit logs, and export reports.
-- **Modern React + TypeScript Command Center**:
-  - Cyber command center aesthetic with dark theme, glassmorphism, side-by-side Goodhart's Law reality check ("The Wow Moment"), interactive evidence drill-down modal, supervisory review action workflow, peer benchmark charts, negative space matrix, and review yield curves.
+SAT-SA is a supervisory analytics prototype for reviewing periodic SOC
+operational evidence. It is not a SIEM, SOC, SOAR, EDR/XDR, real-time monitor,
+or autonomous auditor. Findings are evidence-backed review signals for a human
+supervisor, not declarations of operational failure.
 
-## Test Status
-- `python -m pytest tests/ -v`: run this command for the current count; do not
-  treat a transcribed count as a release metric.
-- Circularity & Independence Regression Suite (`test_circularity_audit.py`): 8/8 passed.
-- End-to-end integration tests: 10/10 passed.
+## Implemented baseline
 
+- CSV/JSON ingestion, canonical evidence, workflow reconstruction, provenance,
+  versioned datasets, and durable SQLite/PostgreSQL persistence.
+- Data Trust gating, execution-gap signals, negative-space coverage signals,
+  peer benchmarking, deterministic explainability, evidence fusion, review
+  prioritization, and review-budget selection.
+- Explicit authentication/RBAC, login throttling, bounded uploads, safe
+  client-facing errors, audit events, and migration-based schema authority.
+- A React/TypeScript frontend with explicit sign-in and no persisted browser
+  bearer token.
+
+## Validation and verification
+
+The robust synthetic protocol has 240 scenarios: 168 tuning, 72 held-out, and
+36 hard negatives. Its latest held-out detector result is 36 TP, 1 FP, 248 TN,
+and 3 FN: precision 97.30%, recall 92.31%, F1 94.74%, and FPR 0.40%. Bootstrap
+intervals are emitted by the protocol. These are synthetic detector results,
+not production, real-SOC, or supervisory-review-utility validation.
+
+Final baseline verification completed with 235 passing backend tests. The
+focused validation/API contract tests passed 25 tests; the frontend type-check
+and production build passed, while lint completed with five existing React
+effect warnings.
+
+Raw finding Top-K measures detector-target coverage. They do not evaluate
+`ReviewBudgetOptimizer` utility. A separate utility benchmark is intentionally
+blocked until independently authored supervisory labels are available; reusing
+planted detector labels would leak generator truth.
+
+## Operational configuration
+
+PostgreSQL requires `DATABASE_URL` or `POSTGRES_PASSWORD`; there is no
+hardcoded database password. A durable production startup applies migrations,
+roles, and the baseline ruleset but does not create known demo users or synthetic
+datasets. Test/demo users and synthetic data require explicit opt-in environment
+variables documented in `.env.example` and the root README.
+
+## Verification commands
+
+- `python -m pytest tests -q`
+- `python scripts/run_robust_validation.py --output results/robust_validation.json`
+- `cd frontend; npm run lint; npm run build; npm audit --audit-level=high`
+- `python -m bandit -r backend -ll`
+
+See `SAT_SA_POST_DIAGNOSTIC_VERIFICATION_REPORT.md` for historical
+post-diagnostic provenance and `SUPERVISORY_RANKING_DIAGNOSTIC.md` for the
+current diagnostic limitations.

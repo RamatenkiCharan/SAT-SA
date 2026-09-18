@@ -1,3 +1,11 @@
+# Historical SAT-SA P0 Traceability Snapshot — Superseded
+
+> This historical September 2026 traceability snapshot contains obsolete test
+> counts and validation/offline claims. It is retained for provenance only; do
+> not use it as current release evidence. See
+> `SAT_SA_POST_DIAGNOSTIC_VERIFICATION_REPORT.md` and
+> `SAT_SA_FINAL_CLAUDE_AUDIT_REMEDIATION_REPORT.md`.
+
 # SAT-SA P0 Requirements-to-Test Traceability Matrix
 
 **Specification Reference**: SAT-SA System Requirements Specification (SRS) v2.0  

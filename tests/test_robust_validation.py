@@ -40,6 +40,9 @@ def test_robust_validation_engine_execution():
     assert res.tuning_metrics is not None
     assert res.held_out_metrics is not None
     assert res.tuning_ranking is not None
+    assert res.held_out_ranking is not None
+    assert len(res.weight_sensitivity) == 10
+    assert all(0 <= point.recall_at_5 <= 1 for point in res.weight_sensitivity)
 
     # Verify metrics logic
     assert 0 <= res.tuning_metrics.precision <= 1
@@ -52,19 +55,31 @@ def test_robust_validation_engine_execution():
 
 
 def test_api_validation_endpoint(supervisor_headers):
-    """Verify /api/validation endpoints return robust validation results."""
+    """Verify the active API returns the current authoritative protocol."""
     client = TestClient(app)
 
     res = client.get("/api/validation", headers=supervisor_headers)
     assert res.status_code == 200
     data = res.json()
-    assert data["status"] == "success"
-    assert "Robust Validation Protocol" in data["methodology"]
-    assert "SYNTHETIC VALIDATION ONLY" in data["disclosure"]
-    assert "review_efficiency" in data
-    assert "final_protocol" in data
-
-    proto = data["final_protocol"]
-    assert "tuning_metrics" in proto
-    assert "held_out_metrics" in proto
-    assert "tuning_ranking" in proto
+    assert data["total_scenarios"] == 240
+    assert data["tuning_scenarios"] == 168
+    assert data["held_out_scenarios"] == 72
+    assert data["hard_negative_count"] == 36
+    assert "SYNTHETIC VALIDATION ONLY" in data["limitation_notice"]
+    assert data["held_out_metrics"] == {
+        "tp": 36,
+        "fp": 1,
+        "tn": 248,
+        "fn": 3,
+        "precision": pytest.approx(0.973),
+        "recall": pytest.approx(0.9231),
+        "f1_score": pytest.approx(0.9474),
+        "fpr": pytest.approx(0.004),
+        "precision_ci": data["held_out_metrics"]["precision_ci"],
+        "recall_ci": data["held_out_metrics"]["recall_ci"],
+    }
+    assert "tuning_ranking" in data
+    assert "held_out_ranking" in data
+    assert "weight_sensitivity" in data
+    assert "final_protocol" not in data
+    assert "review_efficiency" not in data

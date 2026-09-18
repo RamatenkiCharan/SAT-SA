@@ -241,20 +241,19 @@ def test_cli_script_execution(tmp_path: Path):
 
 def test_api_validation_review_efficiency_endpoints(supervisor_headers):
     """
-    Verifies that GET /api/validation and GET /api/validation/review-efficiency
-    return the review efficiency metrics over HTTP.
+    Verifies the explicitly historical review-efficiency endpoint remains
+    isolated from the active robust-validation API contract.
     """
     client = TestClient(app)
 
-    # 1. Main validation endpoint includes review_efficiency
+    # The active validation endpoint must not expose historical diagnostics.
     resp1 = client.get("/api/validation", headers=supervisor_headers)
     assert resp1.status_code == 200
     val_data = resp1.json()
-    assert "review_efficiency" in val_data
-    assert val_data["review_efficiency"]["cross_split_summary"]["average_workload_reduction_percentage"] > 90.0
+    assert "review_efficiency" not in val_data
 
-    # 2. Dedicated review-efficiency endpoint
-    resp2 = client.get("/api/validation/review-efficiency", headers=supervisor_headers)
+    # Historical diagnostics remain available only under an explicit path.
+    resp2 = client.get("/api/validation/historical-review-efficiency", headers=supervisor_headers)
     assert resp2.status_code == 200
     eff_data = resp2.json()
     assert "tuning_split" in eff_data

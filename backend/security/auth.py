@@ -13,6 +13,7 @@ import base64
 import hashlib
 import hmac
 import json
+import logging
 import os
 import secrets
 import time
@@ -37,6 +38,13 @@ _PBKDF2_ITERATIONS = 100_000
 _DEFAULT_TOKEN_EXPIRY_SECONDS = 3600
 
 _bearer_scheme = HTTPBearer(auto_error=False)
+logger = logging.getLogger("satsa.auth")
+
+_BOOTSTRAP_USER_SPECS = (
+    ("usr_admin_01", "admin", "SAT_BOOTSTRAP_ADMIN_PASSWORD", "admin", "NCIIPC Lead Administrator"),
+    ("usr_sup_01", "supervisor", "SAT_BOOTSTRAP_SUPERVISOR_PASSWORD", "supervisor", "Senior NCIIPC Examiner"),
+    ("usr_analyst_01", "analyst", "SAT_BOOTSTRAP_ANALYST_PASSWORD", "analyst", "SOC Evidence Analyst"),
+)
 
 
 @dataclass(frozen=True)
@@ -59,6 +67,34 @@ class UserRecord:
 
 class AuthenticationBackendError(RuntimeError):
     """The configured durable identity store could not be queried safely."""
+
+
+def configured_bootstrap_users() -> list[tuple[str, str, str, str, str]]:
+    """Return explicitly configured demo/test accounts, never implicit defaults.
+
+    A production database starts with roles and the authoritative ruleset but
+    no known-login account.  Test and demo operators may opt in by setting
+    ``SAT_SEED_DEMO_USERS=true`` and all three password variables.  Requiring
+    the complete set makes an incomplete bootstrap fail predictably instead of
+    silently creating a partially usable identity store.
+    """
+    if os.environ.get("SAT_SEED_DEMO_USERS", "").lower() not in {"1", "true", "yes"}:
+        return []
+
+    users: list[tuple[str, str, str, str, str]] = []
+    missing: list[str] = []
+    for user_id, username, password_env, role, full_name in _BOOTSTRAP_USER_SPECS:
+        raw_password = os.environ.get(password_env)
+        if not raw_password:
+            missing.append(password_env)
+            continue
+        users.append((user_id, username, raw_password, role, full_name))
+    if missing:
+        raise RuntimeError(
+            "SAT_SEED_DEMO_USERS requires all bootstrap password variables: "
+            + ", ".join(missing)
+        )
+    return users
 
 
 # ---------------------------------------------------------------------------
@@ -94,7 +130,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
             iterations=iterations,
         )
         return hmac.compare_digest(computed_key.hex(), expected_hash)
-    except Exception:
+    except (TypeError, ValueError):
         return False
 
 
@@ -164,12 +200,12 @@ def decode_access_token(token: str) -> UserContext:
     try:
         payload_bytes = _b64_decode(payload_b64)
         payload = json.loads(payload_bytes.decode("utf-8"))
-    except Exception as exc:
+    except (ValueError, UnicodeDecodeError, json.JSONDecodeError):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Could not parse token payload: {exc}",
+            detail="Malformed authentication token payload.",
             headers={"WWW-Authenticate": "Bearer"},
-        ) from exc
+        )
 
     exp = payload.get("exp")
     if not exp or int(exp) < int(time.time()):
@@ -209,13 +245,7 @@ class UserStore:
         self._seed_default_users()
 
     def _seed_default_users(self):
-        # Development seed users with initial passwords (only salted hashes are stored)
-        seeds = [
-            ("usr_admin_01", "admin", "Admin@SAT2026!", "admin", "NCIIPC Lead Administrator"),
-            ("usr_sup_01", "supervisor", "Supervisor@SAT2026!", "supervisor", "Senior NCIIPC Examiner"),
-            ("usr_analyst_01", "analyst", "Analyst@SAT2026!", "analyst", "SOC Evidence Analyst"),
-        ]
-        for user_id, username, raw_pwd, role, full_name in seeds:
+        for user_id, username, raw_pwd, role, full_name in configured_bootstrap_users():
             self._users[username.lower()] = UserRecord(
                 user_id=user_id,
                 username=username,
@@ -273,121 +303,6 @@ class UserStore:
                 return [self._record_from_row(row) for row in repo.list_users()]
             except SQLAlchemyError as exc:
                 raise AuthenticationBackendError("Durable user lookup failed") from exc
-        return list(self._users.values())
-
-    def _legacy_get_by_username(self, username: str) -> Optional[UserRecord]:
-        """Deprecated implementation retained temporarily for compatibility review."""
-        uname = username.lower().strip()
-        try:
-            from backend.repositories.base import BaseSATRepository
-            from backend.repositories.in_memory_repo import get_repository
-            from backend.repositories.postgres_repo import PostgresRepository
-            from sqlalchemy import text
-            repo = get_repository()
-            if isinstance(repo, PostgresRepository):
-                with repo.engine.connect() as conn:
-                    row = conn.execute(
-                        text("""
-                        SELECT u.user_id, u.username, u.password_hash, r.role_name, u.full_name, u.created_at
-                        FROM users u
-                        LEFT JOIN roles r ON r.role_id = u.role_id
-                        WHERE lower(u.username) = :uname AND u.is_active = 1
-                        """),
-                        {"uname": uname},
-                    ).mappings().first()
-                    if row:
-                        cr_at = row["created_at"]
-                        if isinstance(cr_at, str):
-                            cr_at = datetime.fromisoformat(cr_at)
-                        if cr_at.tzinfo is None:
-                            cr_at = cr_at.replace(tzinfo=timezone.utc)
-                        return UserRecord(
-                            user_id=row["user_id"],
-                            username=row["username"],
-                            hashed_password=row["password_hash"],
-                            role=row["role_name"] or "analyst",
-                            full_name=row["full_name"] or "",
-                            created_at=cr_at,
-                        )
-        except Exception:
-            pass
-        return self._users.get(uname)
-
-    def _legacy_get_by_id_database(self, user_id: str) -> Optional[UserRecord]:
-        try:
-            from backend.repositories.in_memory_repo import get_repository
-            from backend.repositories.postgres_repo import PostgresRepository
-            from sqlalchemy import text
-            repo = get_repository()
-            if isinstance(repo, PostgresRepository):
-                with repo.engine.connect() as conn:
-                    row = conn.execute(
-                        text("""
-                        SELECT u.user_id, u.username, u.password_hash, r.role_name, u.full_name, u.created_at
-                        FROM users u
-                        LEFT JOIN roles r ON r.role_id = u.role_id
-                        WHERE u.user_id = :uid AND u.is_active = 1
-                        """),
-                        {"uid": user_id},
-                    ).mappings().first()
-                    if row:
-                        cr_at = row["created_at"]
-                        if isinstance(cr_at, str):
-                            cr_at = datetime.fromisoformat(cr_at)
-                        if cr_at.tzinfo is None:
-                            cr_at = cr_at.replace(tzinfo=timezone.utc)
-                        return UserRecord(
-                            user_id=row["user_id"],
-                            username=row["username"],
-                            hashed_password=row["password_hash"],
-                            role=row["role_name"] or "analyst",
-                            full_name=row["full_name"] or "",
-                            created_at=cr_at,
-                        )
-        except Exception:
-            pass
-        for u in self._users.values():
-            if u.user_id == user_id:
-                return u
-        return None
-
-    def _legacy_list_users_database(self) -> list[UserRecord]:
-        try:
-            from backend.repositories.in_memory_repo import get_repository
-            from backend.repositories.postgres_repo import PostgresRepository
-            from sqlalchemy import text
-            repo = get_repository()
-            if isinstance(repo, PostgresRepository):
-                with repo.engine.connect() as conn:
-                    rows = conn.execute(
-                        text("""
-                        SELECT u.user_id, u.username, u.password_hash, r.role_name, u.full_name, u.created_at
-                        FROM users u
-                        LEFT JOIN roles r ON r.role_id = u.role_id
-                        WHERE u.is_active = 1
-                        """)
-                    ).mappings().all()
-                    if rows:
-                        result = []
-                        for row in rows:
-                            cr_at = row["created_at"]
-                            if isinstance(cr_at, str):
-                                cr_at = datetime.fromisoformat(cr_at)
-                            if cr_at.tzinfo is None:
-                                cr_at = cr_at.replace(tzinfo=timezone.utc)
-                            result.append(
-                                UserRecord(
-                                    user_id=row["user_id"],
-                                    username=row["username"],
-                                    hashed_password=row["password_hash"],
-                                    role=row["role_name"] or "analyst",
-                                    full_name=row["full_name"] or "",
-                                    created_at=cr_at,
-                                )
-                            )
-                        return result
-        except Exception:
-            pass
         return list(self._users.values())
 
     def authenticate(self, username: str, password: str) -> Optional[UserContext]:

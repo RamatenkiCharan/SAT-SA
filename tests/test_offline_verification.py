@@ -300,14 +300,12 @@ def test_offline_ground_truth_validation_protocol(test_client, supervisor_header
     assert val_res.status_code == 200
     val_data = val_res.json()
 
-    assert val_data["status"] == "success"
-    assert "review_efficiency" in val_data
-    assert "final_protocol" in val_data
-
-    fp = val_data["final_protocol"]
-    assert fp["held_out_ratio"] > 0
-    assert "tuning_metrics" in fp
-    assert "held_out_metrics" in fp
+    assert val_data["total_scenarios"] == 240
+    assert val_data["tuning_scenarios"] == 168
+    assert val_data["held_out_scenarios"] == 72
+    assert val_data["held_out_ratio"] == 0.3
+    assert "tuning_metrics" in val_data
+    assert "held_out_metrics" in val_data
 
 
 

@@ -252,8 +252,8 @@ class AnalyticalRuleset:
         if isinstance(eff_raw, str):
             try:
                 eff = datetime.fromisoformat(eff_raw.replace("Z", "+00:00"))
-            except Exception:
-                eff = datetime.now(timezone.utc)
+            except ValueError as exc:
+                raise ValueError("effective_timestamp must be an ISO-8601 timestamp.") from exc
         elif isinstance(eff_raw, datetime):
             eff = eff_raw
         else:

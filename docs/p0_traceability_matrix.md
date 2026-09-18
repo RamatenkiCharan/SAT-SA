@@ -6,8 +6,9 @@
 **Total Passing**: 25  
 **Uncovered Requirements**: 0  
 **Weak Tests Identified & Hardened**: 0  
-**Final P0 Readiness Score**: **100.0%**  
+**Final P0 Readiness Score**: Historical P0 traceability snapshot; see current verification reports for release evidence.
 **Audit Timestamp**: September 2026  
+**Current validation status**: Controlled synthetic detector validation only — 240 total scenarios (168 tuning, 72 held-out, 36 hard negatives); no authorized NCIIPC production dataset or independently authored supervisory-utility ground truth.
 
 ---
 
@@ -39,7 +40,7 @@
 | **P0-EXP-002** | 12-Field Finding Traceability & 6-Stage Traversal (FR-081/082) | `analytics/explainability/templates.py`, `backend/api/findings.py` | `GET /api/findings/{id}`, `Frontend FindingDetailModal.tsx` | `tests/test_finding_traceability_audit.py` | `test_finding_contains_all_12_traceability_fields`, `test_six_stage_reviewer_flow_traversal` | `unit`, `integration`, `UI` | Supports 6-stage interactive drilldown (`Finding` $\to$ `Explanation` $\to$ `Detector` $\to$ `Calculation` $\to$ `Evidence` $\to$ `Source Record`) with zero broken refs. | **PASS** |
 | **P0-SEC-001** | PBKDF2-HMAC-SHA256 Password Security (FR-090) | `backend/security/auth.py` | `POST /api/auth/login` | `tests/test_authentication_rbac.py` | `test_password_hashing_pbkdf2_100k_rounds`, `test_verify_password_constant_time` | `security`, `unit` | Stores salted password hashes (100,000 rounds, 16-byte random salt) and performs constant-time comparison with zero plaintext storage. | **PASS** |
 | **P0-SEC-002** | Signed Bearer Tokens & RBAC Matrix Enforcement (FR-091/092) | `backend/security/auth.py`, `backend/api/auth.py` | All `/api/*` endpoints | `tests/test_api_rbac_matrix.py`, `tests/test_authentication_rbac.py` | `test_unauthenticated_request_rejected_401`, `test_analyst_cannot_access_admin_or_supervisor_endpoints` | `security`, `API` | Issues tamper-proof HMAC-SHA256 signed bearer tokens and strictly enforces role permissions (`admin`, `supervisor`, `analyst`), rejecting forged headers and expired tokens. | **PASS** |
-| **P0-OFF-001** | 100% Offline Air-Gapped Operation (FR-110) | `backend/main.py`, `frontend/src/index.css`, Analytics Core | Entire application stack (`http://127.0.0.1:8000`) | `tests/test_offline_verification.py` | `test_zero_outbound_network_calls_during_all_workflows`, `test_offline_analytical_pipeline_and_findings` | `offline`, `integration`, `security` | Full application lifecycle runs with 0 outbound network requests, local assets, local backend, and zero cloud API dependencies. | **PASS** |
+| **P0-OFF-001** | Offline-capable core analytics (FR-110) | `backend/main.py`, Analytics Core | Tested local workflow | `tests/test_offline_verification.py` | `test_zero_outbound_network_calls_during_all_workflows`, `test_offline_analytical_pipeline_and_findings` | `offline`, `integration`, `security` | Core analytics were verified under the tested offline configuration without external LLM/cloud inference dependencies. SAT-SA is designed for offline/air-gapped deployment; target-environment network policy remains deployment verification. | **PASS** |
 
 ---
 
@@ -77,5 +78,6 @@ While all P0 requirements are 100% verified, the following non-blocking enhancem
 $$\text{P0 Readiness Percentage} = \frac{25 \text{ Verified Passing Requirements}}{25 \text{ Total Audited P0 Requirements}} \times 100\% = \mathbf{100.0\%}$$
 
 * **Automated Test Count**: **149 Passing Tests across 24 Modules (0 Failures, 0 Skipped)**.
-* **Empirical Validation**: **100% Precision, 100% Recall, 0.0% False Positive Rate** on independent held-out scenarios.
-* **Operational Readiness**: **100% Air-Gapped & Offline Ready**.
+* **Current held-out synthetic detector validation**: 240 total scenarios (168 tuning, 72 held-out, 36 hard negatives); 36 TP, 1 FP, 248 TN, 3 FN; **97.30% precision, 92.31% recall, 94.74% F1, and 0.40% FPR**. This is controlled synthetic validation, not production or NCIIPC validation.
+* **Offline status**: Core analytics were verified under the tested offline configuration without external LLM/cloud inference dependencies. SAT-SA is designed for offline/air-gapped deployment.
+* **Review-budget limitation**: Budget-constrained review selection is implemented, but independently authored supervisory-utility ground truth and ranking-superiority validation are unavailable.

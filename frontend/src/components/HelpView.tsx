@@ -122,7 +122,7 @@ export const HelpView: React.FC = () => {
               </li>
               <li style={{ display: "flex", gap: "0.6rem" }}>
                 <span style={{ color: "var(--accent-emerald)", fontWeight: 800 }}>✓</span>
-                <span><strong>100% Deterministic &amp; Air-Gapped:</strong> Mathematical algorithms and template explainability with zero external LLM hallucinations or network egress.</span>
+                <span><strong>Deterministic, offline-capable core:</strong> Mathematical algorithms and template explainability operate without external LLM/cloud inference in the tested offline configuration.</span>
               </li>
             </ul>
           </div>
@@ -154,7 +154,7 @@ export const HelpView: React.FC = () => {
               </li>
               <li style={{ display: "flex", gap: "0.6rem" }}>
                 <span style={{ color: "var(--accent-crimson)", fontWeight: 800 }}>✕</span>
-                <span><strong>No Opaque Generative LLMs:</strong> Prioritization and explanations are 100% reproducible and verifiable from empirical data.</span>
+                <span><strong>No Opaque Generative LLMs:</strong> Prioritization and explanations are deterministic and traceable to the available evidence.</span>
               </li>
             </ul>
           </div>
@@ -293,7 +293,7 @@ export const HelpView: React.FC = () => {
               { title: "2. Supervisory Findings Triage", desc: "Multi-dimensional filterable triage queue with decomposed priority formulas and evidence drill-down." },
               { title: "3. Peer Cohort Benchmarks", desc: "Non-parametric Median/MAD cross-entity comparisons across critical infrastructure sectors." },
               { title: "4. Negative Space Monitoring", desc: "Surfaces monitoring blind spots on critical infrastructure gated by Data Trust score ratios." },
-              { title: "5. Review Yield & Validation", desc: "Quantifiable empirical workload reduction (4.1x speedup, 78% reduction) and held-out audit verification." },
+              { title: "5. Validation & Review Selection", desc: "Controlled synthetic detector validation and deterministic budget-constrained review selection; independent supervisory utility remains unvalidated." },
               { title: "6. Telemetry Datasets", desc: "Ingestion and version management with cryptographic SHA-256 provenance tracking (§52)." },
               { title: "7. Immutable Audit Ledger", desc: "Tamper-evident blockchain-style log of all human examiner dispositions and dataset switches." },
               { title: "8. Reference & Guidance", desc: "Mathematical formulas, algorithmic specifications, and supervisory operating principles." },
