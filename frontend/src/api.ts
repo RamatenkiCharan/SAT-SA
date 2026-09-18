@@ -195,3 +195,20 @@ export async function fetchReviewBudget(params: {
     body: JSON.stringify(params),
   });
 }
+
+export async function fetchStabilityAnalysis(
+  dataset_version_id?: string,
+  magnitudes: number[] = [0.05, 0.10, 0.15, 0.20],
+  budgets: number[] = [1, 5, 10, 25]
+): Promise<any> {
+  return authFetch(`${API_BASE}/validation/stability`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      dataset_version_id: dataset_version_id || null,
+      magnitudes,
+      budgets,
+    }),
+  });
+}
+

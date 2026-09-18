@@ -572,3 +572,42 @@ export interface DatasetItem {
   version_count: number;
   versions: DatasetVersionItem[];
 }
+
+export interface StabilityResponse {
+  dataset_version_id: string;
+  analysis_run_id: string | null;
+  baseline_ruleset_version: string;
+  baseline_weights: Record<string, number>;
+  population_size: number;
+  optimizer_seed: number;
+  computed_at: string;
+  results: Array<{
+    configuration: {
+      name: string;
+      magnitude: number;
+      weights: Record<string, number>;
+    };
+    score_mae: number;
+    score_max_delta: number;
+    rank_metrics: {
+      spearman_rho: number;
+      mean_displacement: number;
+      max_displacement: number;
+      inversions: number;
+    };
+    review_set_metrics: Record<string, {
+      budget_k: number;
+      intersection_size: number;
+      union_size: number;
+      jaccard_similarity: number;
+      overlap_percentage: number;
+      entrant_count: number;
+      exit_count: number;
+      explanations: string[];
+    }>;
+    threshold_crossings: {
+      high_tier_crossings_out: number;
+      high_tier_crossings_in: number;
+    };
+  }>;
+}

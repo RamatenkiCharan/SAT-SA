@@ -10,13 +10,16 @@ import {
   FileText,
   Activity,
   Award,
+  Scale
 } from "lucide-react";
-import type { ValidationResponse } from "../types";
-import { fetchValidationResults } from "../api";
+import type { ValidationResponse, StabilityResponse } from "../types";
+import { fetchValidationResults, fetchStabilityAnalysis } from "../api";
 
 export const ValidationView: React.FC = () => {
   const [data, setData] = useState<ValidationResponse | null>(null);
+  const [stabilityData, setStabilityData] = useState<StabilityResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [stabilityLoading, setStabilityLoading] = useState<boolean>(false);
   const [activeSplitTab, setActiveSplitTab] = useState<"tuning" | "held_out">("tuning");
 
   const loadValidation = () => {
@@ -32,9 +35,24 @@ export const ValidationView: React.FC = () => {
       });
   };
 
+  const loadStability = () => {
+    setStabilityLoading(true);
+    fetchStabilityAnalysis()
+      .then((res) => {
+        setStabilityData(res);
+        setStabilityLoading(false);
+      })
+      .catch((err) => {
+        console.error("Failed to load stability:", err);
+        setStabilityLoading(false);
+      });
+  };
+
   useEffect(() => {
     loadValidation();
+    loadStability();
   }, []);
+
 
   const effReport = data?.review_efficiency;
   const protoReport = data?.final_protocol;
@@ -463,6 +481,79 @@ export const ValidationView: React.FC = () => {
               <FileText size={14} color="var(--accent-cyan)" />
               <span>Config Stored: <code style={{ color: "var(--accent-cyan)" }}>results/final_validation_protocol.json</code></span>
             </div>
+          </div>
+          {/* Supervisory Decision Stability (Innovation 5) */}
+          <div className="glass-card hud-corner" style={{ padding: "1.65rem", marginTop: "1rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "1rem" }}>
+              <Scale size={22} color="var(--accent-purple)" />
+              <h3 style={{ fontSize: "1.15rem", color: "#fff", margin: 0, fontWeight: 700 }}>
+                Supervisory Decision Stability
+              </h3>
+            </div>
+            <p style={{ fontSize: "0.82rem", color: "#94a3b8", marginBottom: "1.5rem" }}>
+              This analysis measures the sensitivity of the supervisory review strategy to analytical configuration choices.
+              High stability indicates robustness under the tested perturbation envelope; it does not guarantee correctness or absence of systemic bias.
+            </p>
+
+            {stabilityLoading ? (
+               <div style={{ textAlign: "center", color: "#64748b", padding: "2rem" }}>
+                 <Activity size={24} style={{ margin: "0 auto 1rem", animation: "spin 2s linear infinite", color: "var(--accent-purple)" }} />
+                 Executing bounded analytical perturbations...
+               </div>
+            ) : stabilityData ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+                {stabilityData.results.map((res, i) => (
+                  <div key={i} style={{ background: "rgba(15, 23, 42, 0.4)", border: "1px solid rgba(168, 85, 247, 0.2)", borderRadius: "var(--radius-md)", padding: "1rem" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem", borderBottom: "1px solid rgba(255,255,255,0.05)", paddingBottom: "0.5rem" }}>
+                      <strong style={{ color: "var(--accent-purple)", fontSize: "0.9rem" }}>Perturbation Envelope: {res.configuration.name}</strong>
+                      <span className="badge badge-purple" style={{ fontSize: "0.65rem" }}>
+                        MAE: {res.score_mae.toFixed(4)}
+                      </span>
+                    </div>
+                    
+                    <div className="stats-grid-4">
+                      <div>
+                        <span style={{ fontSize: "0.7rem", color: "#64748b" }}>Rank Monotonicity (Spearman)</span>
+                        <div style={{ fontSize: "1.2rem", fontWeight: 700, color: "#fff", fontFamily: "var(--font-mono)" }}>
+                          {res.rank_metrics.spearman_rho.toFixed(3)}
+                        </div>
+                      </div>
+                      <div>
+                        <span style={{ fontSize: "0.7rem", color: "#64748b" }}>Rank Inversions</span>
+                        <div style={{ fontSize: "1.2rem", fontWeight: 700, color: "#fff", fontFamily: "var(--font-mono)" }}>
+                          {res.rank_metrics.inversions}
+                        </div>
+                      </div>
+                      <div>
+                        <span style={{ fontSize: "0.7rem", color: "#64748b" }}>Top-10 Overlap</span>
+                        <div style={{ fontSize: "1.2rem", fontWeight: 700, color: "var(--accent-emerald)", fontFamily: "var(--font-mono)" }}>
+                          {(res.review_set_metrics["10"]?.overlap_percentage * 100).toFixed(0)}%
+                        </div>
+                      </div>
+                      <div>
+                        <span style={{ fontSize: "0.7rem", color: "#64748b" }}>High Priority Transitions</span>
+                        <div style={{ fontSize: "1.2rem", fontWeight: 700, color: "var(--accent-amber)", fontFamily: "var(--font-mono)" }}>
+                          {res.threshold_crossings.high_tier_crossings_in + res.threshold_crossings.high_tier_crossings_out}
+                        </div>
+                      </div>
+                    </div>
+
+                    {res.review_set_metrics["10"]?.explanations && res.review_set_metrics["10"].explanations.length > 0 && (
+                      <div style={{ marginTop: "1rem", padding: "0.75rem", background: "rgba(0,0,0,0.2)", borderRadius: "var(--radius-sm)" }}>
+                        <span style={{ fontSize: "0.7rem", color: "#94a3b8", display: "block", marginBottom: "0.4rem" }}>Top-10 Review-Set Shift Observations:</span>
+                        <ul style={{ margin: 0, paddingLeft: "1rem", fontSize: "0.75rem", color: "#cbd5e1" }}>
+                          {res.review_set_metrics["10"].explanations.map((exp, idx) => (
+                            <li key={idx} style={{ marginBottom: "0.25rem" }}>{exp}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+               <div style={{ fontSize: "0.8rem", color: "#64748b" }}>No stability data available.</div>
+            )}
           </div>
         </>
       ) : null}
