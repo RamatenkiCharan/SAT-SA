@@ -92,6 +92,7 @@ class FindingType(str, Enum):
     COVERAGE_GAP = "COVERAGE_GAP"                # FR-041
     SUPERVISORY_DIVERGENCE = "SUPERVISORY_DIVERGENCE" # Innovation Phase 1
     METRIC_OUTCOME_DIVERGENCE = "METRIC_OUTCOME_DIVERGENCE" # Innovation Phase 2
+    EVIDENCE_CONTRADICTION = "EVIDENCE_CONTRADICTION" # Innovation Phase 3
 
 
 class ExpectationBasis(str, Enum):

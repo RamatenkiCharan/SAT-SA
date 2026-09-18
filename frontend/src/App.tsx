@@ -12,6 +12,7 @@ import { ValidationView } from "./components/ValidationView";
 import { DatasetManagerView } from "./components/DatasetManagerView";
 import { AuditView } from "./components/AuditView";
 import { HelpView } from "./components/HelpView";
+import { ReviewSampleView } from "./components/ReviewSampleView";
 import { ParticleBackground } from "./components/ParticleBackground";
 import type { DatasetItem, Finding } from "./types";
 import { fetchDatasets, fetchFindings, loadDemoDataset, login, setAuthToken } from "./api";
@@ -19,6 +20,7 @@ import { fetchDatasets, fetchFindings, loadDemoDataset, login, setAuthToken } fr
 const TAB_TITLES: Record<TabId, string> = {
   overview: "Executive Overview",
   findings: "Supervisory Findings Triage",
+  reviewsample: "Review-Budget Optimizer",
   benchmarks: "Peer Cohort Benchmarking",
   negativespace: "Negative Space Monitoring Map",
   validation: "Supervisory Review Yield & Validation",
@@ -99,8 +101,6 @@ export function App() {
     <div className="app-container">
       {/* 3D Antigravity Atmospheric Particle Layer (Active on Landing & Executive Overview) */}
       <ParticleBackground active={currentScreen === "landing" || activeTab === "overview"} />
-
-
 
       {/* =================================================================== */}
       {/* PAGE 1: FOCUSED HERO LANDING PAGE                                   */}
@@ -195,6 +195,14 @@ export function App() {
                       onSelectFinding={setSelectedFinding}
                       searchQuery={searchQuery}
                       onSearchChange={setSearchQuery}
+                    />
+                  )}
+
+                  {activeTab === "reviewsample" && (
+                    <ReviewSampleView
+                      findings={findings}
+                      onSelectFinding={setSelectedFinding}
+                      activeVersionId={activeVersionId}
                     />
                   )}
 

@@ -17,6 +17,7 @@ import {
 export type TabId =
   | "overview"
   | "findings"
+  | "reviewsample"
   | "benchmarks"
   | "negativespace"
   | "validation"
@@ -44,6 +45,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const navItems = [
     { id: "overview" as TabId, label: "Executive Overview", icon: Activity },
     { id: "findings" as TabId, label: "Supervisory Findings", icon: ShieldAlert, badge: findingsCount },
+    { id: "reviewsample" as TabId, label: "Review Budget", icon: Shield },
     { id: "benchmarks" as TabId, label: "Peer Benchmarks", icon: BarChart3 },
     { id: "negativespace" as TabId, label: "Negative Space", icon: EyeOff },
     { id: "validation" as TabId, label: "Yield & Validation", icon: CheckCircle2 },

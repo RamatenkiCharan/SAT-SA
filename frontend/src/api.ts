@@ -182,3 +182,16 @@ export async function fetchExportReport(versionId?: string): Promise<any> {
   const query = versionId ? `?dataset_version_id=${versionId}` : "";
   return authFetch(`${API_BASE}/export/report${query}`);
 }
+
+export async function fetchReviewBudget(params: {
+  budget: number;
+  dataset_version_id?: string;
+  control_fraction?: number;
+  seed?: number;
+}): Promise<any> {
+  return authFetch(`${API_BASE}/review-budget/optimize`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params),
+  });
+}

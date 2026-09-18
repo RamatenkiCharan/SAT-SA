@@ -22,6 +22,7 @@ from backend.api.datasets import router as datasets_router
 from backend.api.export import router as export_router
 from backend.api.findings import router as findings_router
 from backend.api.reviews import router as reviews_router
+from backend.api.review_budget import router as review_budget_router
 from backend.api.rulesets import router as rulesets_router
 from backend.api.validation import router as validation_router
 from backend.repositories.in_memory_repo import InMemoryRepository, get_repository
@@ -93,6 +94,7 @@ app.include_router(findings_router)
 app.include_router(reviews_router)
 app.include_router(rulesets_router)
 app.include_router(benchmarks_router)
+app.include_router(review_budget_router)
 
 app.include_router(validation_router)
 app.include_router(audit_router)

@@ -879,15 +879,31 @@ def ingest_file_stream(
     repeated_unresolved_detector = RepeatedUnresolvedDetector(config=active_ruleset.detector_config.repeated_unresolved)
     coverage_gap_detector = CoverageGapDetector(config=active_ruleset.detector_config.coverage_gap)
 
+    from analytics.kpi_integrity.divergence_detector import ClaimEvidenceDivergenceDetector
+    from analytics.kpi_integrity.outcome_divergence import MetricOutcomeDivergenceDetector
+    from analytics.contradiction.evidence_contradiction import EvidenceContradictionEngine
+    kpi_detector = ClaimEvidenceDivergenceDetector(ruleset=active_ruleset)
+    outcome_detector = MetricOutcomeDivergenceDetector(ruleset=active_ruleset)
+    contradiction_engine = EvidenceContradictionEngine(ruleset=active_ruleset)
+
     fast_closures = fast_closure_detector.detect(reconstructed_ds, benchmark_engine)
     escalation_gaps = escalation_gap_detector.detect(reconstructed_ds)
     repeated_unresolved = repeated_unresolved_detector.detect(reconstructed_ds)
     coverage_gaps = coverage_gap_detector.detect(canonical_ds, dq_result.score)
+    
+    analysis_run_id = uuid4()
+    
+    kpi_findings = kpi_detector.detect(canonical_ds, reconstructed_ds, dq_result, analysis_run_id)
+    outcome_findings = outcome_detector.detect(canonical_ds, reconstructed_ds, dq_result, benchmark_engine, analysis_run_id)
+    contradictions = contradiction_engine.detect(canonical_ds, reconstructed_ds, dq_result, analysis_run_id)
 
     # 8. Evidence Fusion (Configured via versioned ruleset)
     fusion_engine = EvidenceFusionEngine(ruleset=active_ruleset)
-    analysis_run_id = uuid4()
     findings: list[Finding] = []
+    
+    findings.extend(kpi_findings)
+    findings.extend(outcome_findings)
+    findings.extend(contradictions)
 
     for cse in canonical_ds.cse_list:
         cse_findings = fusion_engine.fuse_signals(
