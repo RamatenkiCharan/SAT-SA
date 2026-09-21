@@ -197,8 +197,8 @@ def test_benchmark_json_serialization():
     assert "held_out_split" in parsed
     assert "cross_split_summary" in parsed
 
-    assert "workload_effort_reduction_percentage" in parsed["tuning_split"]
-    assert "efficiency_multiplier_speedup" in parsed["tuning_split"]
+    assert "Raw EvidenceFusion priority order" in parsed["evaluation_scope"]
+    assert "not independent supervisory labels" in parsed["limitation_notice"]
     assert "yield_curve" in parsed["tuning_split"]
 
 
@@ -259,3 +259,4 @@ def test_api_validation_review_efficiency_endpoints(supervisor_headers):
     assert "tuning_split" in eff_data
     assert "held_out_split" in eff_data
     assert eff_data["ruleset_version"] == "V1"
+    assert "not independent supervisory labels" in eff_data["limitation_notice"]

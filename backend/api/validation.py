@@ -156,7 +156,7 @@ def get_validation_results(
 @router.get(
     "/historical-review-efficiency",
     deprecated=True,
-    summary="Historical synthetic review-efficiency diagnostic",
+    summary="Historical raw-priority detector-target diagnostic (not supervisory utility)",
 )
 def get_review_efficiency_results(
     current_user: UserContext = Depends(require_supervisor),

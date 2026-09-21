@@ -1,6 +1,5 @@
 #!/usr/bin/env python
-"""
-Reproducible CLI Evaluation Script for SAT-SA Review Efficiency Benchmark.
+"""Historical raw-priority detector-target diagnostic CLI.
 
 Usage:
   python scripts/evaluate_review_efficiency.py
@@ -31,18 +30,20 @@ from backend.models.ruleset import (
 
 
 def format_markdown_report(report_dict: dict) -> str:
-    """Generates a standalone Markdown summary report."""
+    """Generates a standalone report with its non-utility limitation prominently stated."""
     t_res = report_dict["tuning_split"]
     h_res = report_dict["held_out_split"]
     cross = report_dict["cross_split_summary"]
 
     md = []
-    md.append("# SAT-SA Review-Efficiency Benchmark & Workload Reduction Report")
+    md.append("# Historical SAT-SA Detector-Target Ranking Diagnostic")
     md.append("")
     md.append(f"**Evaluation Timestamp:** `{report_dict['evaluation_timestamp']}`  ")
     md.append(f"**Ruleset Version:** `{report_dict['ruleset_version']}` (`{report_dict['ruleset_id']}`)  ")
     md.append(f"**Application Version:** `v{report_dict['app_version']}`  ")
     md.append(f"**Methodology:** {report_dict['methodology']}  ")
+    md.append(f"**Scope:** {report_dict['evaluation_scope']}  ")
+    md.append(f"> **Limitation:** {report_dict['limitation_notice']}")
     md.append("")
     md.append("---")
     md.append("")
@@ -96,7 +97,7 @@ def format_markdown_report(report_dict: dict) -> str:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="SAT-SA Review-Efficiency Benchmark & Workload Reduction Evaluation."
+        description="Historical raw-priority detector-target ranking diagnostic (not supervisory utility)."
     )
     parser.add_argument(
         "--output",

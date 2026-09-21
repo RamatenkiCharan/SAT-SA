@@ -1,8 +1,10 @@
-"""
-SAT-SA Review-Efficiency Evaluation Engine (SRS §19.4, §24).
+"""Historical raw-priority detector-target ranking diagnostic.
 
-Demonstrates quantitatively that SAT-SA helps an examiner/analyst reach useful
-security findings significantly faster than reviewing raw operational datasets blindly.
+This module ranks fusion findings against targets planted in controlled synthetic
+scenarios.  It is useful for inspecting detector-target coverage only.  It does
+not evaluate ReviewBudgetOptimizer selections, human supervisory utility, real
+review time, or production performance: those require independently authored
+review labels which are not available in this repository.
 
 Measures:
 1. Baseline Review Effort (Raw records/cases to inspect, estimated unassisted review hours)
@@ -126,6 +128,8 @@ class ReviewEfficiencyReport:
     ruleset_id: str
     app_version: str
     methodology: str
+    evaluation_scope: str
+    limitation_notice: str
     tuning_split: SplitEfficiencyResult
     held_out_split: SplitEfficiencyResult
     cross_split_summary: dict[str, Any]
@@ -159,7 +163,7 @@ class ReviewEfficiencyEvaluator:
         is_held_out: bool = False,
     ) -> SplitEfficiencyResult:
         """
-        Executes analytical pipeline and calculates empirical review efficiency metrics.
+        Executes the historical detector-target ranking diagnostic.
         """
         dataset_version_id = uuid4()
         raw_bundle, scenarios = generate_synthetic_soc_benchmark(
@@ -430,7 +434,13 @@ class ReviewEfficiencyEvaluator:
             ruleset_version=self.ruleset.version,
             ruleset_id=self.ruleset.ruleset_id,
             app_version="2.2.0",
-            methodology="Generator/Detector Independence Review Efficiency Protocol (SRS §19.4)",
+            methodology="Held-out synthetic raw-priority detector-target ranking diagnostic",
+            evaluation_scope="Raw EvidenceFusion priority order only; ReviewBudgetOptimizer is not evaluated.",
+            limitation_notice=(
+                "Synthetic scenario targets are not independent supervisory labels. "
+                "This diagnostic must not be presented as review-efficiency, human-review utility, "
+                "or production validation."
+            ),
             tuning_split=tuning_res,
             held_out_split=held_out_res,
             cross_split_summary=cross_summary,
