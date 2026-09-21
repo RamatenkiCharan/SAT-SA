@@ -88,6 +88,9 @@ npm run dev
 
 Visit **`http://127.0.0.1:5173`** in your browser.
 
+For a reproducible CI-equivalent Python environment, install the generated lock
+file instead: `python -m pip install --require-hashes -r requirements.lock`.
+
 ---
 
 ## 🧪 Testing & Empirical Validation
