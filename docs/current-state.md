@@ -27,10 +27,11 @@ and 3 FN: precision 97.30%, recall 92.31%, F1 94.74%, and FPR 0.40%. Bootstrap
 intervals are emitted by the protocol. These are synthetic detector results,
 not production, real-SOC, or supervisory-review-utility validation.
 
-Final baseline verification completed with 235 passing backend tests. The
-focused validation/API contract tests passed 25 tests; the frontend type-check
-and production build passed, while lint completed with five existing React
-effect warnings.
+The last full baseline verification completed with 235 passing backend tests.
+The focused validation/API contract tests passed 25 tests; the frontend
+type-check and production build passed, and lint now completes without React
+effect warnings. Run the commands below for the current count after any
+subsequent change.
 
 Raw finding Top-K measures detector-target coverage. They do not evaluate
 `ReviewBudgetOptimizer` utility. A separate utility benchmark is intentionally

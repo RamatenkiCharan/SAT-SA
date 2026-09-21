@@ -32,7 +32,7 @@ from backend.repositories.in_memory_repo import SATRepository, get_repository
 
 
 def test_formula_weights_authoritative_srs_v2():
-    """Formula must be DQ = 0.30*C + 0.25*K + 0.25*V + 0.20*S per SRS v2.0."""
+    """Formula must be DQ = 0.35*C + 0.25*K + 0.25*V + 0.15*S per SRS v2.0."""
     ver_id = uuid4()
     inputs = DataQualityInputs(
         missing_required_fields=0,
@@ -52,7 +52,7 @@ def test_formula_weights_authoritative_srs_v2():
     assert res.sufficiency_score == pytest.approx(1.0)
 
     # Test single-component degradation according to exact weights
-    # C degraded to 0.0 -> score loses 0.30
+    # C degraded to 0.0 -> score loses 0.35
     inputs_c0 = DataQualityInputs(
         missing_required_fields=100,
         total_required_fields=100,
@@ -64,7 +64,7 @@ def test_formula_weights_authoritative_srs_v2():
     )
     res_c0 = compute_data_quality_score(inputs_c0, ver_id)
     assert res_c0.completeness_score == pytest.approx(0.0)
-    assert res_c0.score == pytest.approx(0.70)  # 0.25 + 0.25 + 0.20 = 0.70
+    assert res_c0.score == pytest.approx(0.65)  # 0.25 + 0.25 + 0.15 = 0.65
 
     # K degraded to 0.0 -> score loses 0.25
     inputs_k0 = DataQualityInputs(
@@ -78,7 +78,7 @@ def test_formula_weights_authoritative_srs_v2():
     )
     res_k0 = compute_data_quality_score(inputs_k0, ver_id)
     assert res_k0.consistency_score == pytest.approx(0.0)
-    assert res_k0.score == pytest.approx(0.75)  # 0.30 + 0.25 + 0.20 = 0.75
+    assert res_k0.score == pytest.approx(0.75)  # 0.35 + 0.25 + 0.15 = 0.75
 
     # V degraded to 0.0 -> score loses 0.25
     inputs_v0 = DataQualityInputs(
@@ -92,9 +92,9 @@ def test_formula_weights_authoritative_srs_v2():
     )
     res_v0 = compute_data_quality_score(inputs_v0, ver_id)
     assert res_v0.coverage_score == pytest.approx(0.0)
-    assert res_v0.score == pytest.approx(0.75)  # 0.30 + 0.25 + 0.20 = 0.75
+    assert res_v0.score == pytest.approx(0.75)  # 0.35 + 0.25 + 0.15 = 0.75
 
-    # S degraded to 0.0 -> score loses 0.20
+    # S degraded to 0.0 -> score loses 0.15
     inputs_s0 = DataQualityInputs(
         missing_required_fields=0,
         total_required_fields=100,
@@ -106,7 +106,7 @@ def test_formula_weights_authoritative_srs_v2():
     )
     res_s0 = compute_data_quality_score(inputs_s0, ver_id)
     assert res_s0.sufficiency_score == pytest.approx(0.0)
-    assert res_s0.score == pytest.approx(0.80)  # 0.30 + 0.25 + 0.25 = 0.80
+    assert res_s0.score == pytest.approx(0.85)  # 0.35 + 0.25 + 0.25 = 0.85
 
 
 def test_two_datasets_with_different_quality_receive_different_dq_scores():
