@@ -194,7 +194,6 @@ export const FindingDetailModal: React.FC<FindingDetailModalProps> = ({
 
   useEffect(() => {
     let isMounted = true;
-    setLoading(true);
     fetchFindingDetail(finding.finding_id)
       .then((data) => {
         if (isMounted) {

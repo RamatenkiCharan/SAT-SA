@@ -84,7 +84,10 @@ export const AuditView: React.FC = () => {
   };
 
   useEffect(() => {
-    loadAudit();
+    fetchAuditLogs()
+      .then(setEvents)
+      .catch((err) => console.error("Failed to load audit logs:", err))
+      .finally(() => setLoading(false));
   }, []);
 
   const filteredEvents = events.filter((ev) => {
@@ -139,7 +142,7 @@ export const AuditView: React.FC = () => {
           </div>
 
           <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
-            <button onClick={loadAudit} className="btn-secondary" style={{ fontSize: "0.85rem" }}>
+            <button onClick={() => loadAudit()} className="btn-secondary" style={{ fontSize: "0.85rem" }}>
               <RefreshCw size={14} /> Refresh Ledger
             </button>
           </div>

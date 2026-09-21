@@ -18,7 +18,7 @@ export const ValidationView: React.FC = () => {
   const [validationError, setValidationError] = useState<string | null>(null);
   const [stabilityData, setStabilityData] = useState<StabilityResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [stabilityLoading, setStabilityLoading] = useState<boolean>(false);
+  const [stabilityLoading, setStabilityLoading] = useState<boolean>(true);
   const loadValidation = () => {
     setLoading(true);
     setValidationError(null);
@@ -36,22 +36,18 @@ export const ValidationView: React.FC = () => {
       });
   };
 
-  const loadStability = () => {
-    setStabilityLoading(true);
-    fetchStabilityAnalysis()
-      .then((res) => {
-        setStabilityData(res);
-        setStabilityLoading(false);
-      })
-      .catch((err) => {
-        console.error("Failed to load stability:", err);
-        setStabilityLoading(false);
-      });
-  };
-
   useEffect(() => {
-    loadValidation();
-    loadStability();
+    fetchValidationResults()
+      .then(setData)
+      .catch((err) => {
+        console.error("Failed to load validation:", err);
+        setValidationError("Validation results are unavailable. Retry to retrieve the current synthetic protocol.");
+      })
+      .finally(() => setLoading(false));
+    fetchStabilityAnalysis()
+      .then(setStabilityData)
+      .catch((err) => console.error("Failed to load stability:", err))
+      .finally(() => setStabilityLoading(false));
   }, []);
 
   const formatPercent = (value: number) => `${(value * 100).toFixed(2)}%`;
@@ -79,7 +75,7 @@ export const ValidationView: React.FC = () => {
               )}
             </p>
           </div>
-          <button onClick={loadValidation} id="re-run-protocol-btn" className="btn-secondary" style={{ fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+          <button onClick={() => loadValidation()} id="re-run-protocol-btn" className="btn-secondary" style={{ fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "0.4rem" }}>
             <RefreshCw size={14} className={loading ? "spin" : ""} /> Re-Run Protocol
           </button>
         </div>
@@ -410,7 +406,7 @@ export const ValidationView: React.FC = () => {
         <div className="glass-card" role="alert" style={{ padding: "2rem", textAlign: "center", color: "#fbbf24" }}>
           <ShieldAlert size={24} style={{ margin: "0 auto 0.75rem" }} />
           <p style={{ margin: "0 0 1rem" }}>{validationError}</p>
-          <button onClick={loadValidation} className="btn-secondary">Retry validation retrieval</button>
+          <button onClick={() => loadValidation()} className="btn-secondary">Retry validation retrieval</button>
         </div>
       ) : null}
     </div>

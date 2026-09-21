@@ -13,7 +13,6 @@ export const PeerBenchmarkView: React.FC<PeerBenchmarkViewProps> = ({ activeVers
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    setLoading(true);
     fetchBenchmarks(activeVersionId || undefined)
       .then((data) => {
         setEntities(data.entities || []);

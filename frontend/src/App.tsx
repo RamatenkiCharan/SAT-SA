@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { LoginView } from "./components/LoginView";
 import { LandingHeroView } from "./components/LandingHeroView";
 import { Sidebar, type TabId } from "./components/Sidebar";
@@ -59,15 +59,12 @@ export function App() {
     }
   };
 
-  useEffect(() => {
-    if (authenticated) refreshData();
-  }, [authenticated]);
-
   const handleLogin = async (username: string, password: string) => {
     setLoginError(undefined);
     try {
       await login(username, password);
       setAuthenticated(true);
+      void refreshData();
     } catch (error) {
       setAuthToken(null);
       setLoginError(error instanceof Error ? error.message : "Authentication failed.");
@@ -207,7 +204,7 @@ export function App() {
                   )}
 
                   {activeTab === "benchmarks" && (
-                    <PeerBenchmarkView activeVersionId={activeVersionId} />
+                    <PeerBenchmarkView key={activeVersionId || "no-active-version"} activeVersionId={activeVersionId} />
                   )}
 
                   {activeTab === "negativespace" && (
@@ -254,6 +251,7 @@ export function App() {
       {/* Deep-Dive Evidence Drill-Down Modal */}
       {selectedFinding && (
         <FindingDetailModal
+          key={selectedFinding.finding_id}
           finding={selectedFinding}
           onClose={() => setSelectedFinding(null)}
           onReviewSubmitted={refreshData}
