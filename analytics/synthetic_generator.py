@@ -964,7 +964,6 @@ def run_full_analytical_pipeline(
         ruleset_id=active_ruleset.ruleset_id,
         detector_config=det_cfg,
         app_version="1.0.0",
-        git_commit="git-rev-satsa-v2",
         started_at=started_at,
         finished_at=finished_at,
         status="COMPLETED",

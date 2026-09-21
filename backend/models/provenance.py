@@ -5,10 +5,49 @@ Enforces reproducible analytical execution and verifiable lineage from upload to
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from pathlib import Path
+import re
+import subprocess
 from typing import Any, Optional
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
+
+
+_GIT_SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
+
+
+def current_git_commit(repo_root: Path | None = None) -> str | None:
+    """Return the checked-out source revision, marking an uncommitted tree explicitly.
+
+    Provenance must never invent a revision.  A ``None`` result means that Git metadata
+    was unavailable at analysis time (for example, a source archive deployment).
+    """
+    root = repo_root or Path(__file__).resolve().parents[2]
+    try:
+        revision = subprocess.run(  # nosec B603: fixed local Git command and arguments
+            ["git", "rev-parse", "HEAD"],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=2,
+        )
+        sha = revision.stdout.strip().lower()
+        if revision.returncode != 0 or not _GIT_SHA_PATTERN.fullmatch(sha):
+            return None
+
+        status = subprocess.run(  # nosec B603: fixed local Git command and arguments
+            ["git", "status", "--porcelain"],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=2,
+        )
+        return f"{sha}+dirty" if status.returncode == 0 and status.stdout.strip() else sha
+    except (OSError, subprocess.SubprocessError):
+        return None
 
 
 class AnalysisRun(BaseModel):
@@ -24,7 +63,10 @@ class AnalysisRun(BaseModel):
     ruleset_id: Optional[UUID] = None
     detector_config: dict[str, Any] = Field(default_factory=dict, description="Snapshot of detector parameters.")
     app_version: str = Field("1.0.0", description="Application release version.")
-    git_commit: Optional[str] = Field("git-rev-satsa-v2", description="Source code commit SHA/tag where available.")
+    git_commit: Optional[str] = Field(
+        default_factory=current_git_commit,
+        description="Checked-out source commit SHA; '+dirty' marks uncommitted source, and null means unavailable.",
+    )
     started_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     finished_at: Optional[datetime] = None
     status: str = Field("COMPLETED", description="Execution status: RUNNING | COMPLETED | FAILED")

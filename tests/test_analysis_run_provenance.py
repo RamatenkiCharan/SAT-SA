@@ -24,8 +24,10 @@ from __future__ import annotations
 
 import io
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
+from types import SimpleNamespace
 from uuid import UUID, uuid4
 
 import pytest
@@ -34,7 +36,7 @@ from fastapi.testclient import TestClient
 from analytics.synthetic_generator import generate_synthetic_soc_benchmark, run_full_analytical_pipeline
 from backend.main import app
 from backend.models.canonical import Finding, FindingType, ExpectationBasis, EvidenceRef
-from backend.models.provenance import AnalysisRun, FindingProvenanceTrace
+from backend.models.provenance import AnalysisRun, FindingProvenanceTrace, current_git_commit
 from backend.models.ruleset import AnalyticalRuleset
 from backend.repositories.in_memory_repo import InMemoryRepository, set_repository
 from backend.repositories.postgres_repo import PostgresRepository
@@ -85,7 +87,9 @@ def test_analysis_run_provenance_metadata(clean_in_memory_repo: InMemoryReposito
     assert run.finished_at >= run.started_at
     assert run.error_message is None
     assert run.app_version == "1.0.0"
-    assert run.git_commit == "git-rev-satsa-v2"
+    assert run.git_commit == current_git_commit()
+    assert run.git_commit is None or re.fullmatch(r"[0-9a-f]{40}(?:\+dirty)?", run.git_commit)
+    assert run.git_commit != "git-rev-satsa-v2"
     assert run.findings_count == len(pipeline_res.findings)
     assert "coverage_gap" in run.detector_config
 
@@ -98,6 +102,15 @@ def test_analysis_run_provenance_metadata(clean_in_memory_repo: InMemoryReposito
             assert ev.source_record_ref is not None
             assert isinstance(ev.source_record_ref, str)
             assert len(ev.source_record_ref) > 0
+
+
+def test_git_commit_is_unknown_when_git_metadata_cannot_be_read(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    """Unavailable Git metadata must be reported as unknown, never as a placeholder SHA."""
+    def unavailable_git(*_args, **_kwargs):
+        return SimpleNamespace(returncode=1, stdout="")
+
+    monkeypatch.setattr("backend.models.provenance.subprocess.run", unavailable_git)
+    assert current_git_commit(tmp_path) is None
 
 
 def test_orphan_findings_prevented_in_memory(clean_in_memory_repo: InMemoryRepository):
