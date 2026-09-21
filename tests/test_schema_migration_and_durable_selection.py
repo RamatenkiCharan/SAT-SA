@@ -11,6 +11,7 @@ Verifies:
 from __future__ import annotations
 
 from pathlib import Path
+import json
 from uuid import uuid4
 
 import pytest
@@ -194,9 +195,32 @@ class TestDurableActiveVersion:
         assert repo2.active_dataset_version_id == ver_id
         repo2.engine.dispose()
 
-    def test_memory_mode_active_version_is_not_durable(self):
-        """InMemoryRepository active version is process-local and expected to reset."""
-        repo = InMemoryRepository()
-        assert repo.active_dataset_version_id is None
-        # Memory repo doesn't have _persist_setting or app_settings
-        assert not hasattr(repo, '_persist_setting')
+def test_memory_mode_active_version_is_not_durable():
+    """InMemoryRepository active version is process-local and expected to reset."""
+    repo = InMemoryRepository()
+    assert repo.active_dataset_version_id is None
+    # Memory repo doesn't have _persist_setting or app_settings
+    assert not hasattr(repo, '_persist_setting')
+
+
+def test_legacy_bundled_v1_weights_are_reconciled_on_durable_restart(fresh_sqlite_url: str):
+    """The known pre-SRS bundled V1 values are corrected without touching other rulesets."""
+    repo = PostgresRepository(db_url=fresh_sqlite_url)
+    legacy = repo.get_active_ruleset().to_dict()
+    legacy["dq_weights"].update({
+        "completeness_weight": 0.30,
+        "consistency_weight": 0.25,
+        "coverage_weight": 0.25,
+        "sample_sufficiency_weight": 0.20,
+    })
+    with repo.engine.begin() as conn:
+        conn.execute(
+            text("UPDATE rulesets SET weights_json = :weights WHERE ruleset_id = :ruleset_id"),
+            {"weights": json.dumps(legacy), "ruleset_id": str(repo.get_active_ruleset().ruleset_id)},
+        )
+    repo.engine.dispose()
+
+    restarted = PostgresRepository(db_url=fresh_sqlite_url)
+    assert restarted.get_active_ruleset().dq_weights.completeness_weight == 0.35
+    assert restarted.get_active_ruleset().dq_weights.sample_sufficiency_weight == 0.15
+    restarted.engine.dispose()

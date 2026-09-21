@@ -16,6 +16,7 @@ from analytics.data_quality.quality_score import (
     InsufficientInputError,
     compute_data_quality_score,
 )
+from backend.models.ruleset import DEFAULT_AUTHORITATIVE_RULESET_V1
 
 DATASET_VERSION_ID = uuid.uuid4()
 
@@ -34,6 +35,17 @@ def test_perfect_data_yields_score_of_one():
     assert result.score == pytest.approx(1.0)
     assert result.components.completeness_ratio == 1.0
     assert result.components.coverage_ratio == 1.0
+
+
+def test_authoritative_v1_weights_match_the_srs_formula():
+    """Protect the 0.35/0.25/0.25/0.15 SRS contract from configuration drift."""
+    assert DEFAULT_AUTHORITATIVE_RULESET_V1.dq_weights.to_dict() == {
+        "completeness_weight": 0.35,
+        "consistency_weight": 0.25,
+        "coverage_weight": 0.25,
+        "sample_sufficiency_weight": 0.15,
+        "minimum_sample_size_default": 30,
+    }
 
 
 def test_coverage_ratio_is_capped_at_one_even_with_surplus_evidence():

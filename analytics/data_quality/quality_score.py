@@ -2,10 +2,10 @@
 Data Quality Score - pinned formula, SRS v2.0 §7.2.1.
 
     DataQualityScore(dataset) =
-        0.30 * CompletenessRatio
+        0.35 * CompletenessRatio
       + 0.25 * ConsistencyRatio
       + 0.25 * CoverageRatio        (capped at 1.0)
-      + 0.20 * SampleSufficiencyRatio
+      + 0.15 * SampleSufficiencyRatio
 
 Hard rules this module MUST respect (do not "simplify" these away):
   - Weights are read from the `rulesets` table (data_quality_score / V1), never

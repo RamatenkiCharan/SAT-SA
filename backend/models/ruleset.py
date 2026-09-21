@@ -17,10 +17,10 @@ from uuid import UUID, uuid4
 @dataclass(frozen=True)
 class DataQualityWeights:
     """SRS v2.0 §7.2.1 Data Quality formula weights."""
-    completeness_weight: float = 0.30
+    completeness_weight: float = 0.35
     consistency_weight: float = 0.25
     coverage_weight: float = 0.25
-    sample_sufficiency_weight: float = 0.20
+    sample_sufficiency_weight: float = 0.15
     minimum_sample_size_default: int = 30
 
     def to_dict(self) -> dict[str, Any]:
@@ -29,10 +29,10 @@ class DataQualityWeights:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> DataQualityWeights:
         return cls(
-            completeness_weight=float(data.get("completeness_weight", 0.30)),
+            completeness_weight=float(data.get("completeness_weight", 0.35)),
             consistency_weight=float(data.get("consistency_weight", 0.25)),
             coverage_weight=float(data.get("coverage_weight", 0.25)),
-            sample_sufficiency_weight=float(data.get("sample_sufficiency_weight", 0.20)),
+            sample_sufficiency_weight=float(data.get("sample_sufficiency_weight", 0.15)),
             minimum_sample_size_default=int(data.get("minimum_sample_size_default", 30)),
         )
 
@@ -283,7 +283,7 @@ DEFAULT_AUTHORITATIVE_RULESET_V1 = AnalyticalRuleset(
     is_active=True,
     effective_timestamp=datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
     author="SAT-SA Engineering Team / NCIIPC Technical Committee",
-    rationale="Pinned authoritative formula weights (DQ 0.30/0.25/0.25/0.20, Fusion 0.30/0.25/0.20/0.15/-0.10, MAD 2.5).",
+    rationale="Pinned authoritative formula weights (DQ 0.35/0.25/0.25/0.15, Fusion 0.30/0.25/0.20/0.15/-0.10, MAD 2.5).",
     dq_weights=DataQualityWeights(),
     fusion_weights=FusionWeights(),
     thresholds=PriorityThresholds(),

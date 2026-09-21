@@ -165,7 +165,8 @@ class PostgresRepository(BaseSATRepository):
                         {"rid": f"role_{r_name}", "rname": r_name},
                     )
 
-            # Seed default authoritative ruleset V1 if not present
+            # Seed the authoritative V1 ruleset.  Older builds accidentally used
+            # 0.30/0.25/0.25/0.20; correct only that identified bundled record.
             ruleset_rows = conn.execute(text("SELECT COUNT(*) FROM rulesets")).scalar()
             if not ruleset_rows:
                 conn.execute(
@@ -184,6 +185,29 @@ class PostgresRepository(BaseSATRepository):
                         "active": True,
                     },
                 )
+
+            else:
+                canonical_row = conn.execute(
+                    text("SELECT weights_json FROM rulesets WHERE ruleset_id = :rid"),
+                    {"rid": str(DEFAULT_AUTHORITATIVE_RULESET_V1.ruleset_id)},
+                ).mappings().first()
+                if canonical_row:
+                    stored = json.loads(canonical_row["weights_json"])
+                    dq_weights = stored.get("dq_weights", {})
+                    if (
+                        dq_weights.get("completeness_weight") == 0.30
+                        and dq_weights.get("consistency_weight") == 0.25
+                        and dq_weights.get("coverage_weight") == 0.25
+                        and dq_weights.get("sample_sufficiency_weight") == 0.20
+                    ):
+                        conn.execute(
+                            text("UPDATE rulesets SET weights_json = :weights, rationale = :rationale WHERE ruleset_id = :rid"),
+                            {
+                                "weights": json.dumps(DEFAULT_AUTHORITATIVE_RULESET_V1.to_dict()),
+                                "rationale": DEFAULT_AUTHORITATIVE_RULESET_V1.rationale,
+                                "rid": str(DEFAULT_AUTHORITATIVE_RULESET_V1.ruleset_id),
+                            },
+                        )
 
             # Seed demo/test users only with explicit operator configuration.
             user_rows = conn.execute(text("SELECT COUNT(*) FROM users")).scalar()
@@ -1336,7 +1360,6 @@ class PostgresRepository(BaseSATRepository):
                         "itime": claim.ingest_time.isoformat(),
                     },
                 )
-
             # 12. Coverage Observations
             for cov in canonical_dataset.coverage_observations:
                 conn.execute(

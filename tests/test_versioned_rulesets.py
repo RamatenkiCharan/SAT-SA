@@ -148,8 +148,8 @@ def test_changing_ruleset_produces_intentionally_different_results():
     dq_v1 = compute_data_quality_score(inputs, uuid4(), ruleset=DEFAULT_AUTHORITATIVE_RULESET_V1)
     dq_v2 = compute_data_quality_score(inputs, uuid4(), ruleset=ruleset_v2)
 
-    # V1: 0.30(0.8) + 0.25(1.0) + 0.25(1.0) + 0.20(1.0) = 0.24 + 0.25 + 0.25 + 0.20 = 0.94
-    assert round(dq_v1.score, 4) == 0.9400
+    # V1: 0.35(0.8) + 0.25(1.0) + 0.25(1.0) + 0.15(1.0) = 0.28 + 0.25 + 0.25 + 0.15 = 0.93
+    assert round(dq_v1.score, 4) == 0.9300
     # V2: 0.50(0.8) + 0.20(1.0) + 0.20(1.0) + 0.10(1.0) = 0.40 + 0.20 + 0.20 + 0.10 = 0.90
     assert round(dq_v2.score, 4) == 0.9000
     assert dq_v1.score != dq_v2.score
@@ -266,7 +266,7 @@ def test_safe_fallback_behavior():
     # When no repository is provided, active ruleset is V1
     fallback = RulesetService.get_active_ruleset(repo=None)
     assert fallback.version == "V1"
-    assert fallback.dq_weights.completeness_weight == 0.30
+    assert fallback.dq_weights.completeness_weight == 0.35
 
     # Non-existent version raises explicit ValueError
     with pytest.raises(ValueError, match="not found"):
@@ -299,7 +299,7 @@ def test_ruleset_api_endpoints_and_rbac():
     assert active_resp.status_code == 200
     active_data = active_resp.json()
     assert active_data["version"] == "V1"
-    assert active_data["dq_weights"]["completeness_weight"] == 0.30
+    assert active_data["dq_weights"]["completeness_weight"] == 0.35
 
     # 5. POST /api/rulesets by Analyst -> 403 Forbidden
     new_ruleset_payload = {
