@@ -12,7 +12,7 @@
 **Document ID**: SAT-SA-AUDIT-CIRCULARITY-001  
 **Specification References**: SRS §19.4 (Generator/Detector Independence Protocol), §24 (Validation Framework), FR-030–041  
 **Audit Date**: September 2026  
-**Status**: PASSED / CERTIFIED INDEPENDENT  
+**Historical Status**: ARCHIVED — NOT CURRENT VALIDATION EVIDENCE
 
 ---
 
@@ -203,7 +203,7 @@ Empirical results computed by the `FinalValidationProtocol` engine:
 
 ## 7. Regression Test Suite Verification
 
-The regression test suite in [`tests/test_circularity_audit.py`](file:///c:/Users/ramat/OneDrive/Desktop/SIH/SAT-SA/tests/test_circularity_audit.py) proves detector independence through 8 automated tests:
+The historical regression suite in [`tests/test_circularity_audit.py`](../tests/test_circularity_audit.py) documented detector-independence checks through 8 automated tests:
 
 1. `test_detectors_ignore_generator_metadata_and_decoy_tags`: Injects decoy labels (`_generator_tag`, `cheat_code`, `is_defect`, `ground_truth_category`) into raw telemetry; proves pipeline produces mathematically identical findings.
 2. `test_detectors_work_on_handcrafted_canonical_telemetry`: Constructs canonical Pydantic objects directly without invoking generator helper functions; verifies all 4 detectors operate purely on schema mechanics.
@@ -216,12 +216,17 @@ The regression test suite in [`tests/test_circularity_audit.py`](file:///c:/User
 
 ---
 
-## 8. Audit Conclusion & Certification
+## 8. Historical Audit Conclusion
 
-The SAT-SA synthetic validation engine and detector suite have been thoroughly audited and found to be **strictly independent and non-circular**.
+This historical exercise recorded the following observations for its then-current
+15-scenario protocol. It is not a certification of the current validation
+protocol and must not be used as release, production, or supervisory-utility
+evidence.
 
 * Detectors operate purely on **canonical operational telemetry**, **dynamic peer MAD distributions**, and **entity relationship graphs**.
 * No detector inspects or relies upon synthetic generator tags, private labels, or cheat metadata.
 * Held-out scenarios represent **33.3%** of the scenario catalog and validate generalization on unseen asset classes, extreme timing distributions, and compound noise profiles.
 
-**Final Certification**: **COMPLIANT & NON-CIRCULAR (SRS §19.4, §24)**.
+**Historical conclusion**: the archived suite reported compliance with its
+then-current interpretation of SRS §19.4 and §24. Consult the current protocol
+and its explicit limitations before making any validation claim.
