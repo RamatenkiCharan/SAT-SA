@@ -112,11 +112,10 @@ def run_stability_analysis(
 
     # Resolve analysis_run
     analysis_run_id = None
-    for ds_meta in repo.datasets.values():
-        for v in ds_meta.get("versions", []):
-            if str(v.get("version_id")) == ver_id:
-                analysis_run_id = v.get("analysis_run_id")
-                break
+    for run in repo.analysis_runs.values():
+        if str(run.dataset_version_id) == ver_id:
+            analysis_run_id = run.analysis_run_id
+            break
 
     # 2. Run Analysis
     analyzer = StabilityAnalyzer(optimizer_seed=req.optimizer_seed)
@@ -124,7 +123,7 @@ def run_stability_analysis(
         findings=findings,
         dataset_version_id=version_uuid,
         analysis_run_id=analysis_run_id,
-        baseline_ruleset_version=DEFAULT_AUTHORITATIVE_RULESET_V1.version_id,
+        baseline_ruleset_version=DEFAULT_AUTHORITATIVE_RULESET_V1.version,
         budgets=req.budgets,
         magnitudes=req.magnitudes,
     )

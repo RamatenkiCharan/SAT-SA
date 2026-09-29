@@ -44,12 +44,11 @@ def optimize_review_budget(
     # Resolve analysis run and ruleset metadata
     analysis_run_id = None
     ruleset_version = None
-    for ds_meta in repo.datasets.values():
-        for v in ds_meta.get("versions", []):
-            if str(v.get("version_id")) == ver_id:
-                analysis_run_id = v.get("analysis_run_id")
-                ruleset_version = v.get("ruleset_version")
-                break
+    for run in repo.analysis_runs.values():
+        if str(run.dataset_version_id) == ver_id:
+            analysis_run_id = run.analysis_run_id
+            ruleset_version = run.ruleset_version
+            break
 
     optimizer = ReviewBudgetOptimizer(
         control_fraction=req.control_fraction,
