@@ -23,9 +23,9 @@ services:
       - key: SAT_SECRET_KEY
         generateValue: true
       - key: SAT_ALLOWED_ORIGINS
-        value: "http://localhost:5173,https://satsa-frontend.onrender.com"
+        sync: false
       - key: SAT_SEED_DEMO_DATA
-        value: "true"
+        value: "false"
 
   - type: web
     name: satsa-frontend
@@ -38,4 +38,4 @@ services:
       - key: NODE_VERSION
         value: 20.0.0
       - key: VITE_API_URL
-        value: "https://satsa-backend.onrender.com/api"
+        sync: false
