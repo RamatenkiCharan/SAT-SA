@@ -215,6 +215,7 @@ class PostgresRepository(BaseSATRepository):
                 now_str = datetime.now(timezone.utc).isoformat()
                 from backend.security.auth import configured_bootstrap_users, hash_password
                 for uid, uname, raw_pwd, role, fname in configured_bootstrap_users():
+                    # Note: PostgreSQL requires TRUE/FALSE boolean literals (not 1/0)
                     conn.execute(
                         text("""
                         INSERT INTO users (user_id, username, password_hash, role_id, full_name, created_at, is_active)
