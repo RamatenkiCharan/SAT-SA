@@ -218,7 +218,7 @@ class PostgresRepository(BaseSATRepository):
                     conn.execute(
                         text("""
                         INSERT INTO users (user_id, username, password_hash, role_id, full_name, created_at, is_active)
-                        VALUES (:uid, :uname, :phash, :rid, :fname, :cat, 1)
+                        VALUES (:uid, :uname, :phash, :rid, :fname, :cat, TRUE)
                         """),
                         {
                             "uid": uid,
@@ -957,7 +957,7 @@ class PostgresRepository(BaseSATRepository):
             return conn.execute(text("""
                 SELECT u.user_id, u.username, u.password_hash, r.role_name, u.full_name, u.created_at
                 FROM users u LEFT JOIN roles r ON r.role_id = u.role_id
-                WHERE lower(u.username) = :username AND u.is_active = 1
+                WHERE lower(u.username) = :username AND u.is_active = TRUE
             """), {"username": username.lower().strip()}).mappings().first()
 
     def get_user_by_id(self, user_id: str) -> dict[str, Any] | None:
@@ -965,7 +965,7 @@ class PostgresRepository(BaseSATRepository):
             return conn.execute(text("""
                 SELECT u.user_id, u.username, u.password_hash, r.role_name, u.full_name, u.created_at
                 FROM users u LEFT JOIN roles r ON r.role_id = u.role_id
-                WHERE u.user_id = :user_id AND u.is_active = 1
+                WHERE u.user_id = :user_id AND u.is_active = TRUE
             """), {"user_id": user_id}).mappings().first()
 
     def list_users(self) -> list[dict[str, Any]]:
@@ -973,7 +973,7 @@ class PostgresRepository(BaseSATRepository):
             return conn.execute(text("""
                 SELECT u.user_id, u.username, u.password_hash, r.role_name, u.full_name, u.created_at
                 FROM users u LEFT JOIN roles r ON r.role_id = u.role_id
-                WHERE u.is_active = 1
+                WHERE u.is_active = TRUE
             """)).mappings().all()
 
     def set_active_dataset_version(
@@ -1118,7 +1118,7 @@ class PostgresRepository(BaseSATRepository):
                     :vid, :did, :vnum, :sref, :itime,
                     :tver, :sver, :rcount, :dqscore,
                     :dqcomps, :dqwarns, :fformat, :shash,
-                    :acount, :rcount_rej, :rreasons, 1
+                    :acount, :rcount_rej, :rreasons, TRUE
                 )
                 """),
                 {
