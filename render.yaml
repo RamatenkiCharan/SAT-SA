@@ -26,6 +26,14 @@ services:
         sync: false
       - key: SAT_SEED_DEMO_DATA
         value: "false"
+      - key: SAT_SEED_DEMO_USERS
+        value: "true"
+      - key: SAT_BOOTSTRAP_ADMIN_PASSWORD
+        value: "SIH2024-Admin@NCIIPC"
+      - key: SAT_BOOTSTRAP_SUPERVISOR_PASSWORD
+        value: "SIH2024-Supervisor@NCIIPC"
+      - key: SAT_BOOTSTRAP_ANALYST_PASSWORD
+        value: "SIH2024-Analyst@NCIIPC"
 
   - type: web
     name: satsa-frontend

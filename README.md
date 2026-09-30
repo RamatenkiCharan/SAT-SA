@@ -22,6 +22,21 @@ SAT-SA is **not** a SIEM, SOAR, EDR/XDR, or real-time monitoring platform. It is
 
 ---
 
+## 🔑 Demo Login Credentials (for SIH Judges)
+
+The live deployment seeds three role-based demo accounts on first startup.
+Use any of the following to log in:
+
+| Role | Username | Password | Permissions |
+|------|----------|----------|-------------|
+| **Admin** | `admin` | `SIH2024-Admin@NCIIPC` | Full access — manage datasets, rulesets, users, review findings, view audit logs |
+| **Supervisor** | `supervisor` | `SIH2024-Supervisor@NCIIPC` | Review findings, approve/reject, view peer benchmarks and audit trail |
+| **Analyst** | `analyst` | `SIH2024-Analyst@NCIIPC` | Upload datasets, run analysis, view findings and evidence drill-down |
+
+> **Note:** These are demo-only credentials seeded via environment variables for hackathon evaluation. In a production deployment, accounts would be provisioned through the admin panel with unique passwords.
+
+---
+
 ## 🏗️ Architecture & Core Components
 
 ```
