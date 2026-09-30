@@ -35,6 +35,6 @@ services:
     rootDir: frontend
     envVars:
       - key: NODE_VERSION
-        value: 22.22.0
+        value: 24.21.0
       - key: VITE_API_URL
         sync: false
