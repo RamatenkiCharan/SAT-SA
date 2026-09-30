@@ -33,7 +33,6 @@ services:
     buildCommand: npm install && npm run build
     staticPublishPath: ./dist
     rootDir: frontend
-    plan: free
     envVars:
       - key: NODE_VERSION
         value: 20.0.0
