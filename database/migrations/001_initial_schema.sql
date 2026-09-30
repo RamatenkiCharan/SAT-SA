@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS users (
     role_id       VARCHAR(64) NOT NULL REFERENCES roles(role_id),
     full_name     VARCHAR(256),
     created_at    TIMESTAMP NOT NULL,
-    is_active     BOOLEAN NOT NULL DEFAULT 1
+    is_active     BOOLEAN NOT NULL DEFAULT TRUE
 );
 
 -- ---------------------------------------------------------------------
@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS dataset_versions (
     accepted_rows        INTEGER NOT NULL DEFAULT 0,
     rejected_rows        INTEGER NOT NULL DEFAULT 0,
     rejection_reasons    TEXT,
-    is_immutable          BOOLEAN NOT NULL DEFAULT 1,
+    is_immutable          BOOLEAN NOT NULL DEFAULT TRUE,
     UNIQUE (dataset_id, version_number)
 );
 
@@ -206,7 +206,7 @@ CREATE TABLE IF NOT EXISTS rulesets (
     author         VARCHAR(128),
     rationale      TEXT,
     effective_date TIMESTAMP NOT NULL,
-    is_active      BOOLEAN DEFAULT 0,
+    is_active      BOOLEAN DEFAULT FALSE,
     UNIQUE (ruleset_name, version)
 );
 
@@ -273,7 +273,7 @@ CREATE TABLE IF NOT EXISTS finding_signals (
     finding_id     VARCHAR(64) NOT NULL REFERENCES findings(finding_id),
     signal_name    VARCHAR(128) NOT NULL,
     signal_value   NUMERIC,
-    is_contradicting BOOLEAN NOT NULL DEFAULT 0,
+    is_contradicting BOOLEAN NOT NULL DEFAULT FALSE,
     PRIMARY KEY (finding_id, signal_name)
 );
 
