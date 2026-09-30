@@ -29,11 +29,11 @@ services:
       - key: SAT_SEED_DEMO_USERS
         value: "true"
       - key: SAT_BOOTSTRAP_ADMIN_PASSWORD
-        value: "SIH2024-Admin@NCIIPC"
+        value: "Admin@123"
       - key: SAT_BOOTSTRAP_SUPERVISOR_PASSWORD
-        value: "SIH2024-Supervisor@NCIIPC"
+        value: "supervisor@123"
       - key: SAT_BOOTSTRAP_ANALYST_PASSWORD
-        value: "SIH2024-Analyst@NCIIPC"
+        value: "analyst@123"
 
   - type: web
     name: satsa-frontend
